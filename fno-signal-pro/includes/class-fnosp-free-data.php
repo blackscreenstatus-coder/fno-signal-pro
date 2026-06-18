@@ -24,6 +24,12 @@ class FnOSP_Free_Data {
 	/** @var FnOSP_Settings */
 	private $settings;
 
+	/** @var string|null Cached NSE cookie for this request. */
+	private $nse_cookie = null;
+
+	/** @var bool Once NSE is detected unreachable, skip further NSE calls this request. */
+	private $nse_blocked = false;
+
 	public function __construct( FnOSP_Settings $settings ) {
 		$this->settings = $settings;
 	}
@@ -92,6 +98,7 @@ class FnOSP_Free_Data {
 	public function get_snapshot( $instrument, $opts = array() ) {
 		$instrument = strtoupper( sanitize_text_field( $instrument ) );
 		$symbol     = $this->resolve_symbol( $instrument );
+		$lite       = ! empty( $opts['lite'] );
 
 		$intraday = $this->fetch_chart( $symbol, '15m', '1mo' );
 		if ( is_wp_error( $intraday ) ) {
@@ -101,8 +108,8 @@ class FnOSP_Free_Data {
 			return new WP_Error( 'fnosp_free_thin', __( 'Free data source returned too few candles to analyze.', 'fno-signal-pro' ) );
 		}
 
-		// Daily candles for previous-day OHLC.
-		$daily = $this->fetch_chart( $symbol, '1d', '1mo' );
+		// Daily candles for previous-day OHLC. Skipped in lite (scanner) mode to halve HTTP calls.
+		$daily = $lite ? array() : $this->fetch_chart( $symbol, '1d', '1mo' );
 
 		return $this->build_snapshot( $instrument, $intraday, $daily, is_array( $opts ) ? $opts : array() );
 	}
@@ -160,7 +167,7 @@ class FnOSP_Free_Data {
 		$response = wp_remote_get(
 			$url,
 			array(
-				'timeout' => 15,
+				'timeout' => 10,
 				'headers' => array(
 					'Accept'     => 'application/json',
 					'User-Agent' => 'Mozilla/5.0 (compatible; FnOSignalPro/1.0; +https://wordpress.org)',
@@ -474,10 +481,13 @@ class FnOSP_Free_Data {
 			'dii_net' => 0.0,
 			'reason'  => 'FII/DII source unreachable; neutral default used.',
 		);
+		if ( $this->nse_blocked ) {
+			return $default;
+		}
 
 		$cookies = $this->prime_nse_cookies();
 		$args    = array(
-			'timeout' => 12,
+			'timeout' => 6,
 			'headers' => array(
 				'Accept'          => 'application/json, text/plain, */*',
 				'Accept-Language' => 'en-US,en;q=0.9',
@@ -493,6 +503,7 @@ class FnOSP_Free_Data {
 		$response = wp_remote_get( $url, $args );
 
 		if ( is_wp_error( $response ) || wp_remote_retrieve_response_code( $response ) !== 200 ) {
+			$this->nse_blocked = true;
 			return $default;
 		}
 		$rows = json_decode( wp_remote_retrieve_body( $response ), true );
@@ -536,12 +547,15 @@ class FnOSP_Free_Data {
 			'declines'        => 0,
 			'reason'          => 'Breadth source unreachable; neutral default used.',
 		);
+		if ( $this->nse_blocked ) {
+			return $default;
+		}
 
 		$index_name = $this->nse_index_name( $instrument );
 
 		$cookies = $this->prime_nse_cookies();
 		$args    = array(
-			'timeout' => 12,
+			'timeout' => 6,
 			'headers' => array(
 				'Accept'          => 'application/json, text/plain, */*',
 				'Accept-Language' => 'en-US,en;q=0.9',
@@ -555,6 +569,7 @@ class FnOSP_Free_Data {
 
 		$response = wp_remote_get( $this->proxied_url( 'https://www.nseindia.com/api/allIndices' ), $args );
 		if ( is_wp_error( $response ) || wp_remote_retrieve_response_code( $response ) !== 200 ) {
+			$this->nse_blocked = true;
 			return $default;
 		}
 		$body = json_decode( wp_remote_retrieve_body( $response ), true );
@@ -633,7 +648,7 @@ class FnOSP_Free_Data {
 		$response = wp_remote_get(
 			$url,
 			array(
-				'timeout' => 12,
+				'timeout' => 6,
 				'headers' => array(
 					'Accept'     => 'application/rss+xml, application/xml, text/xml',
 					'User-Agent' => 'Mozilla/5.0 (compatible; FnOSignalPro/1.0)',
@@ -743,12 +758,16 @@ class FnOSP_Free_Data {
 			$default['reason'] = 'Option chain not available for this symbol (index options only).';
 			return $default;
 		}
+		if ( $this->nse_blocked ) {
+			$default['reason'] = 'NSE unreachable this request; neutral defaults used.';
+			return $default;
+		}
 		$sym = $map[ strtoupper( $instrument ) ]['symbol'];
 
 		// NSE requires a session cookie. Prime it, then call the API.
 		$cookies = $this->prime_nse_cookies();
 		$args    = array(
-			'timeout' => 12,
+			'timeout' => 6,
 			'headers' => array(
 				'Accept'          => 'application/json, text/plain, */*',
 				'Accept-Language' => 'en-US,en;q=0.9',
@@ -764,6 +783,7 @@ class FnOSP_Free_Data {
 		$response = wp_remote_get( $url, $args );
 
 		if ( is_wp_error( $response ) || wp_remote_retrieve_response_code( $response ) !== 200 ) {
+			$this->nse_blocked = true;
 			$default['reason'] = 'Live option-chain source unreachable from server; options score uses neutral defaults.';
 			return $default;
 		}
@@ -825,10 +845,17 @@ class FnOSP_Free_Data {
 	 * @return string Cookie header string, or '' on failure.
 	 */
 	private function prime_nse_cookies() {
+		if ( $this->nse_blocked ) {
+			return '';
+		}
+		if ( null !== $this->nse_cookie ) {
+			return $this->nse_cookie; // Cached for this request (avoids re-priming per call).
+		}
+		$this->nse_cookie = ''; // Default to empty so we don't retry on failure.
 		$resp = wp_remote_get(
 			$this->proxied_url( 'https://www.nseindia.com/option-chain' ),
 			array(
-				'timeout' => 10,
+				'timeout' => 6,
 				'headers' => array(
 					'User-Agent'      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36',
 					'Accept'          => 'text/html,application/xhtml+xml',
@@ -837,6 +864,7 @@ class FnOSP_Free_Data {
 			)
 		);
 		if ( is_wp_error( $resp ) ) {
+			$this->nse_blocked = true;
 			return '';
 		}
 		$cookies = wp_remote_retrieve_header( $resp, 'set-cookie' );
@@ -848,7 +876,8 @@ class FnOSP_Free_Data {
 		foreach ( $parts as $c ) {
 			$pairs[] = strtok( $c, ';' );
 		}
-		return implode( '; ', array_filter( $pairs ) );
+		$this->nse_cookie = implode( '; ', array_filter( $pairs ) );
+		return $this->nse_cookie;
 	}
 
 	/**
