@@ -220,6 +220,14 @@
 			wrap.appendChild( dn );
 		}
 
+		// Expert Advice footer (plain-language, prominent).
+		if ( data.expert_advice ) {
+			var adv = el( 'div', 'fnosp-expert' );
+			adv.appendChild( el( 'div', 'fnosp-expert-head', '🧑‍🏫 Expert Advice (in simple words)' ) );
+			adv.appendChild( el( 'div', '', esc( data.expert_advice ) ) );
+			wrap.appendChild( adv );
+		}
+
 		// Meta + disclaimer.
 		var meta = 'Source: ' + esc( data.source ) + ( data.cached ? ' (cached)' : '' ) + ' · ' + esc( data.generated_at );
 		wrap.appendChild( el( 'div', 'fnosp-disclaimer', meta + '<br>' + esc( data.disclaimer ) ) );
@@ -247,6 +255,11 @@
 			var ot = document.getElementById( 'fnosp-opt-type' ).value;
 			var dte = document.getElementById( 'fnosp-dte' ).value || 7;
 			url += '&strike=' + encodeURIComponent( strike ) + '&opt_type=' + encodeURIComponent( ot ) + '&dte=' + encodeURIComponent( dte );
+			var expEl = document.getElementById( 'fnosp-expiry' );
+			var exp = expEl ? expEl.value : '';
+			if ( exp ) {
+				url += '&expiry=' + encodeURIComponent( exp );
+			}
 			var premEl = document.getElementById( 'fnosp-premium' );
 			var prem = premEl ? premEl.value : '';
 			if ( prem && parseFloat( prem ) > 0 ) {
@@ -278,6 +291,17 @@
 		var btn = document.getElementById( 'fnosp-generate' );
 		if ( btn ) {
 			btn.addEventListener( 'click', fetchSignal );
+		}
+
+		// Auto-fill days-to-expiry when an expiry date is chosen.
+		var expEl = document.getElementById( 'fnosp-expiry' );
+		var dteEl = document.getElementById( 'fnosp-dte' );
+		if ( expEl && dteEl ) {
+			expEl.addEventListener( 'change', function () {
+				if ( ! expEl.value ) { return; }
+				var diff = Math.ceil( ( new Date( expEl.value ).getTime() - Date.now() ) / 86400000 );
+				if ( diff >= 1 ) { dteEl.value = diff; }
+			} );
 		}
 
 		var tgBtn = document.getElementById( 'fnosp-tg-test' );

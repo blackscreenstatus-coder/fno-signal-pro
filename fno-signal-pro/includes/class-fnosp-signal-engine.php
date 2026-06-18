@@ -157,6 +157,8 @@ class FnOSP_Signal_Engine {
 			$option_plan = $this->build_option_plan( $snapshot, $direction, $atm, $otype, $dte, 0.0 );
 		}
 
+		$layman = $this->build_layman_summary( $direction, $snapshot, $setup, $strategy, $confidence, $this->trend_label( $net ) );
+
 		$result = array(
 			'instrument'    => $snapshot['instrument'],
 			'generated_at'  => gmdate( 'c', $snapshot['timestamp'] ),
@@ -183,7 +185,8 @@ class FnOSP_Signal_Engine {
 			'probabilities' => $probabilities,
 			'option_plan'   => $option_plan,
 			'final_verdict' => $this->final_verdict( $direction, $snapshot, $net ),
-			'layman_summary' => $this->build_layman_summary( $direction, $snapshot, $setup, $strategy, $confidence, $this->trend_label( $net ) ),
+			'layman_summary' => $layman,
+			'expert_advice' => $this->build_expert_advice( $direction, $snapshot, $layman, $option_plan ),
 			'data_notes'    => isset( $snapshot['data_notes'] ) ? (array) $snapshot['data_notes'] : array(),
 			'snapshot'      => $snapshot,
 			'ai'            => null,
@@ -202,6 +205,33 @@ class FnOSP_Signal_Engine {
 		}
 
 		return $result;
+	}
+
+	// ---------------------------------------------------------------------
+	// Expert Advice — a single plain-language line for the dashboard footer.
+	// ---------------------------------------------------------------------
+	private function build_expert_advice( $direction, $s, $layman, $option_plan ) {
+		$base = isset( $layman['text'] ) ? $layman['text'] : '';
+
+		if ( 'NO TRADE' === $direction ) {
+			return $base;
+		}
+
+		$opt = '';
+		if ( is_array( $option_plan ) ) {
+			$tg   = isset( $option_plan['sell_when']['targets'] ) ? $option_plan['sell_when']['targets'] : array();
+			$cond = preg_replace( '/^buy when /i', '', rtrim( $option_plan['buy_when']['condition'], '.' ) );
+			$opt  = sprintf(
+				' Simple option idea: buy %s when %s; target premiums around ₹%s / ₹%s with a stop near ₹%s.',
+				$option_plan['label'],
+				$cond,
+				isset( $tg[0]['premium'] ) ? number_format_i18n( $tg[0]['premium'], 2 ) : '-',
+				isset( $tg[1]['premium'] ) ? number_format_i18n( $tg[1]['premium'], 2 ) : '-',
+				isset( $option_plan['sell_when']['stop_loss']['premium'] ) ? number_format_i18n( $option_plan['sell_when']['stop_loss']['premium'], 2 ) : '-'
+			);
+		}
+
+		return trim( $base . $opt . ' Remember: trade small, respect the stop-loss, and never risk money you cannot afford to lose.' );
 	}
 
 	// ---------------------------------------------------------------------

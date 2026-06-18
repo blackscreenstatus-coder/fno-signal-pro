@@ -59,3 +59,7 @@
 
 .fnosp-w-option { font-size: 13px; background: #f3f6fc; border-left: 3px solid #2563eb; padding: 8px 12px; border-radius: 6px; margin-top: 8px; }
 .fnosp-w-option-head { font-weight: 700; color: #1d3a73; margin-bottom: 3px; }
+
+
+.fnosp-w-expert { margin-top: 10px; background: #11203f; color: #eaf0fb; padding: 10px 12px; border-radius: 8px; font-size: 13px; }
+.fnosp-w-expert-head { font-weight: 700; color: #ffd97a; margin-bottom: 4px; }

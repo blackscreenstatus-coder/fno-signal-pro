@@ -65,6 +65,11 @@ class FnOSP_Rest_Api {
 						'type'     => 'integer',
 						'required' => false,
 					),
+					'expiry'     => array(
+						'type'              => 'string',
+						'required'          => false,
+						'sanitize_callback' => 'sanitize_text_field',
+					),
 					'premium'    => array(
 						'type'     => 'number',
 						'required' => false,
@@ -219,8 +224,18 @@ class FnOSP_Rest_Api {
 		$strike   = $req->get_param( 'strike' );
 		$opt_type = $req->get_param( 'opt_type' );
 		$dte      = $req->get_param( 'dte' );
+		$expiry   = $req->get_param( 'expiry' );
 		$premium  = $req->get_param( 'premium' );
 		$has_opt  = ! empty( $strike ) && (float) $strike > 0;
+
+		// If an expiry date (YYYY-MM-DD) is given, derive days-to-expiry from it.
+		if ( ! empty( $expiry ) ) {
+			$exp_ts = strtotime( $expiry );
+			if ( false !== $exp_ts ) {
+				$days = (int) ceil( ( $exp_ts - time() ) / DAY_IN_SECONDS );
+				$dte  = max( 1, $days );
+			}
+		}
 
 		$opt_suffix = $has_opt ? ( '|' . (float) $strike . ( $opt_type ? strtoupper( $opt_type ) : 'CE' ) . '|' . (int) $dte . '|' . (float) $premium ) : '';
 		$cache_key = FnOSP_Cache::key( $instrument . $opt_suffix, $use_ai );

@@ -81,8 +81,9 @@ foreach ( $instruments as $sym ) {
 			<option value="CE"><?php esc_html_e( 'CE (Call)', 'fno-signal-pro' ); ?></option>
 			<option value="PE"><?php esc_html_e( 'PE (Put)', 'fno-signal-pro' ); ?></option>
 		</select>
-		<label for="fnosp-dte"><?php esc_html_e( 'Days to expiry', 'fno-signal-pro' ); ?></label>
-		<input type="number" id="fnosp-dte" min="1" max="60" value="7" style="width:70px;" />
+		<label for="fnosp-expiry"><?php esc_html_e( 'Expiry date', 'fno-signal-pro' ); ?></label>
+		<input type="date" id="fnosp-expiry" style="width:150px;" />
+		<input type="number" id="fnosp-dte" min="1" max="60" value="7" style="width:64px;" title="<?php esc_attr_e( 'Days to expiry (auto-filled from expiry date)', 'fno-signal-pro' ); ?>" />
 		<label for="fnosp-premium"><?php esc_html_e( 'Live premium ₹', 'fno-signal-pro' ); ?></label>
 		<input type="number" id="fnosp-premium" step="0.05" placeholder="optional" style="width:100px;" />
 		<span class="description"><?php esc_html_e( 'Enter your real option price for accurate targets; leave blank to use the model estimate.', 'fno-signal-pro' ); ?></span>

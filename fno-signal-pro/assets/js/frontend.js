@@ -83,8 +83,11 @@
 			html += '<div class="fnosp-w-ai">' + esc( data.ai.narrative ) + '</div>';
 		}
 
-		html += '<div class="fnosp-w-meta">Source: ' + esc( data.source ) + ( data.cached ? ' (cached)' : '' ) + ' · ' + esc( data.generated_at ) + '</div>';
-		if ( data.disclaimer ) {
+		if ( data.expert_advice ) {
+			html += '<div class="fnosp-w-expert"><div class="fnosp-w-expert-head">🧑‍🏫 Expert Advice (in simple words)</div>' + esc( data.expert_advice ) + '</div>';
+		}
+
+		html += '<div class="fnosp-w-meta">Source: ' + esc( data.source ) + ( data.cached ? ' (cached)' : '' ) + ' · ' + esc( data.generated_at ) + '</div>';		if ( data.disclaimer ) {
 			html += '<div class="fnosp-w-disc">' + esc( data.disclaimer ) + '</div>';
 		}
 
