@@ -293,7 +293,55 @@
 				runTest( emailBtn, FNOSP_ADMIN.emailTestUrl, 'fnosp-email-test-result' );
 			} );
 		}
+
+		var scanBtn = document.getElementById( 'fnosp-scan' );
+		if ( scanBtn ) {
+			scanBtn.addEventListener( 'click', runScan );
+		}
 	} );
+
+	function pickRow( x ) {
+		var s = x.setup;
+		var lvls = s ? ( ' · Entry ₹' + x.setup.entry_low + '–₹' + x.setup.entry_high + ' · SL ₹' + s.stop_loss + ' · T ₹' + s.target1 + '/₹' + s.target2 ) : '';
+		return '<li><strong>' + esc( x.instrument ) + '</strong> @ ₹' + esc( x.ltp ) + ' — <strong>' + esc( x.confidence ) + '%</strong> (' + esc( x.trend ) + ')' + esc( lvls ) + '</li>';
+	}
+
+	function runScan() {
+		var btn = document.getElementById( 'fnosp-scan' );
+		var out = document.getElementById( 'fnosp-scan-result' );
+		btn.disabled = true;
+		out.innerHTML = '<p class="fnosp-loading">Scanning stocks… this can take 20–40s on first run.</p>';
+
+		fetch( FNOSP_ADMIN.scanUrl, {
+			headers: { 'X-WP-Nonce': FNOSP_ADMIN.nonce },
+			credentials: 'same-origin'
+		} )
+			.then( function ( r ) { return r.json().then( function ( j ) { return { ok: r.ok, body: j }; } ); } )
+			.then( function ( res ) {
+				btn.disabled = false;
+				if ( ! res.ok ) {
+					out.innerHTML = '<p class="fnosp-error">' + esc( res.body && res.body.message ? res.body.message : 'Scan failed.' ) + '</p>';
+					return;
+				}
+				var d = res.body;
+				var html = '<div class="fnosp-card">';
+				html += '<div class="fnosp-card-head"><strong>Today\'s Top Picks</strong><span class="fnosp-conf">Scanned ' + esc( d.scanned ) + ' · min ' + esc( d.min_confidence ) + '% · ' + ( d.market_open ? 'market open' : 'market closed' ) + ( d.cached ? ' · cached' : '' ) + '</span></div>';
+
+				html += '<div class="fnosp-section-title" style="color:#14794a">BUY candidates (' + d.buy.length + ')</div>';
+				html += d.buy.length ? ( '<ul class="fnosp-list">' + d.buy.map( pickRow ).join( '' ) + '</ul>' ) : '<p><em>No high-confidence BUY today.</em></p>';
+
+				html += '<div class="fnosp-section-title" style="color:#b32424">SELL candidates (' + d.sell.length + ')</div>';
+				html += d.sell.length ? ( '<ul class="fnosp-list">' + d.sell.map( pickRow ).join( '' ) + '</ul>' ) : '<p><em>No high-confidence SELL today.</em></p>';
+
+				html += '<div class="fnosp-disclaimer">' + esc( d.disclaimer ) + ' · ' + esc( d.generated_at ) + '</div>';
+				html += '</div>';
+				out.innerHTML = html;
+			} )
+			.catch( function () {
+				btn.disabled = false;
+				out.innerHTML = '<p class="fnosp-error">Scan failed (network/timeout). Try again.</p>';
+			} );
+	}
 
 	function runTest( btn, url, resultId ) {
 		var out = document.getElementById( resultId );

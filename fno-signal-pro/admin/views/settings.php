@@ -131,6 +131,21 @@ $instruments_csv = implode( ', ', (array) $values['instruments'] );
 			</tr>
 		</table>
 
+		<h2 class="title"><?php esc_html_e( 'Stock Scanner (Top Picks)', 'fno-signal-pro' ); ?></h2>
+		<table class="form-table" role="presentation">
+			<tr>
+				<th scope="row"><?php esc_html_e( 'Scan universe', 'fno-signal-pro' ); ?></th>
+				<td>
+					<textarea name="fnosp[scan_universe]" rows="3" class="large-text"><?php echo esc_textarea( implode( ', ', (array) $values['scan_universe'] ) ); ?></textarea>
+					<p class="description"><?php esc_html_e( 'Comma-separated NSE stock tickers the "Today\'s Top Picks" scanner ranks (e.g. RELIANCE, HDFCBANK, INFY, SBIN...). Keep to ~25 for speed.', 'fno-signal-pro' ); ?></p>
+				</td>
+			</tr>
+			<tr>
+				<th scope="row"><?php esc_html_e( 'Scanner min confidence (%)', 'fno-signal-pro' ); ?></th>
+				<td><input type="number" min="50" max="95" name="fnosp[scan_min_confidence]" value="<?php echo esc_attr( $values['scan_min_confidence'] ); ?>" /> <span class="description"><?php esc_html_e( 'Only list stocks at or above this confidence.', 'fno-signal-pro' ); ?></span></td>
+			</tr>
+		</table>
+
 		<h2 class="title"><?php esc_html_e( 'Frontend', 'fno-signal-pro' ); ?></h2>
 		<table class="form-table" role="presentation">
 			<tr>

@@ -85,6 +85,23 @@ class FnOSP_Rest_Api {
 
 		register_rest_route(
 			self::NS,
+			'/scan',
+			array(
+				'methods'             => WP_REST_Server::READABLE,
+				'callback'            => array( $this, 'scan' ),
+				'permission_callback' => array( $this, 'permission' ),
+				'args'                => array(
+					'nocache' => array(
+						'type'     => 'boolean',
+						'required' => false,
+						'default'  => false,
+					),
+				),
+			)
+		);
+
+		register_rest_route(
+			self::NS,
 			'/telegram-test',
 			array(
 				'methods'             => WP_REST_Server::CREATABLE,
@@ -129,6 +146,98 @@ class FnOSP_Rest_Api {
 				'message' => __( 'Test email sent. Check your inbox (and spam folder).', 'fno-signal-pro' ),
 			)
 		);
+	}
+
+	/**
+	 * GET /scan — rank the configured stock universe and return today's top BUY/SELL picks.
+	 *
+	 * @param WP_REST_Request $req Request.
+	 * @return WP_REST_Response|WP_Error
+	 */
+	public function scan( WP_REST_Request $req ) {
+		$nocache   = (bool) $req->get_param( 'nocache' );
+		$cache_key = FNOSP_CACHE_PREFIX . 'scan_v1';
+		$ttl       = max( 120, (int) $this->settings->get( 'cache_ttl', 60 ) * 3 ); // Scans are heavier; cache longer.
+
+		if ( ! $nocache ) {
+			$cached = FnOSP_Cache::get( $cache_key );
+			if ( false !== $cached ) {
+				$cached['cached'] = true;
+				return rest_ensure_response( $cached );
+			}
+		}
+
+		$universe = (array) $this->settings->get( 'scan_universe', array() );
+		$universe = array_slice( array_values( array_unique( array_map( 'strtoupper', $universe ) ) ), 0, 30 );
+		if ( empty( $universe ) ) {
+			return new WP_Error( 'fnosp_scan_empty', __( 'No scan universe configured.', 'fno-signal-pro' ), array( 'status' => 400 ) );
+		}
+
+		$min_conf = (int) $this->settings->get( 'scan_min_confidence', 68 );
+
+		// Allow long-running scan.
+		if ( function_exists( 'set_time_limit' ) ) {
+			@set_time_limit( 180 ); // phpcs:ignore
+		}
+
+		$free   = new FnOSP_Free_Data( $this->settings );
+		$engine = FnOSP_Plugin::make_engine();
+		$macro  = $free->get_macro(); // Shared market-wide values, fetched once.
+
+		$rows   = array();
+		$errors = 0;
+		foreach ( $universe as $sym ) {
+			$snap = $free->get_snapshot_lite( $sym, $macro );
+			if ( is_wp_error( $snap ) ) {
+				$errors++;
+				continue;
+			}
+			$r = $engine->evaluate( $snap, array( 'use_ai' => false, 'min_confidence' => $min_conf ) );
+			$rows[] = array(
+				'instrument' => $r['instrument'],
+				'signal'     => $r['signal'],
+				'confidence' => $r['confidence'],
+				'trend'      => $r['trend_label'],
+				'ltp'        => $r['ltp'],
+				'setup'      => $r['setup'] ? array(
+					'entry_low'  => $r['setup']['entry_low'],
+					'entry_high' => $r['setup']['entry_high'],
+					'stop_loss'  => $r['setup']['stop_loss'],
+					'target1'    => $r['setup']['target1'],
+					'target2'    => $r['setup']['target2'],
+				) : null,
+				'headline'   => isset( $r['layman_summary']['headline'] ) ? $r['layman_summary']['headline'] : '',
+			);
+		}
+
+		$buys  = array_filter( $rows, function ( $x ) use ( $min_conf ) {
+			return 'BUY' === $x['signal'] && $x['confidence'] >= $min_conf;
+		} );
+		$sells = array_filter( $rows, function ( $x ) use ( $min_conf ) {
+			return 'SELL' === $x['signal'] && $x['confidence'] >= $min_conf;
+		} );
+
+		$by_conf = function ( $a, $b ) {
+			return $b['confidence'] - $a['confidence'];
+		};
+		usort( $buys, $by_conf );
+		usort( $sells, $by_conf );
+
+		$result = array(
+			'generated_at' => gmdate( 'c' ),
+			'scanned'      => count( $rows ),
+			'errors'       => $errors,
+			'min_confidence' => $min_conf,
+			'macro'        => $macro,
+			'market_open'  => FnOSP_Scheduler::is_market_open(),
+			'buy'          => array_values( $buys ),
+			'sell'         => array_values( $sells ),
+			'cached'       => false,
+			'disclaimer'   => __( 'Educational scan, not investment advice. Verify before trading.', 'fno-signal-pro' ),
+		);
+
+		FnOSP_Cache::set( $cache_key, $result, $ttl );
+		return rest_ensure_response( $result );
 	}
 
 	/**

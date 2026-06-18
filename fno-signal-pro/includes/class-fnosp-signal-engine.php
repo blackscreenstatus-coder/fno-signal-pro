@@ -59,7 +59,17 @@ class FnOSP_Signal_Engine {
 		if ( is_wp_error( $snapshot ) ) {
 			return $snapshot;
 		}
+		return $this->evaluate( $snapshot, $opts );
+	}
 
+	/**
+	 * Score a pre-built market snapshot (used by single-symbol and scanner paths).
+	 *
+	 * @param array $snapshot Normalized snapshot.
+	 * @param array $opts     Options.
+	 * @return array
+	 */
+	public function evaluate( array $snapshot, array $opts = array() ) {
 		// STEP 1-3: analysis components, each returns [-1..1] directional bias + label data.
 		$trend    = $this->analyze_trend( $snapshot );
 		$price    = $this->analyze_price_action( $snapshot );
@@ -106,8 +116,10 @@ class FnOSP_Signal_Engine {
 			$confidence = min( $confidence, 60 );
 		}
 
-		// STEP 5: confidence gate.
-		$min_conf = (int) $this->settings->get( 'confidence_min', 75 );
+		// STEP 5: confidence gate (scanner may override with a lower threshold).
+		$min_conf = isset( $opts['min_confidence'] )
+			? (int) $opts['min_confidence']
+			: (int) $this->settings->get( 'confidence_min', 75 );
 		if ( $confidence < $min_conf ) {
 			$direction = 'NO TRADE';
 		}

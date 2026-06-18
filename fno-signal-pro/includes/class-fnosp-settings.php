@@ -43,6 +43,10 @@ class FnOSP_Settings {
 			'default_instrument' => 'NIFTY',
 			'instruments'        => array( 'NIFTY', 'BANKNIFTY', 'FINNIFTY', 'SENSEX', 'MIDCPNIFTY', 'INFY', 'ACC', 'SUZLON' ),
 
+			// Scanner ("Today's Top Picks") — universe of stocks to rank.
+			'scan_universe'      => array( 'RELIANCE', 'HDFCBANK', 'ICICIBANK', 'INFY', 'TCS', 'SBIN', 'AXISBANK', 'ITC', 'LT', 'TATAMOTORS', 'ACC', 'SUZLON', 'WIPRO', 'MARUTI', 'BAJFINANCE', 'HINDUNILVR', 'KOTAKBANK', 'SUNPHARMA' ),
+			'scan_min_confidence' => 68,
+
 			// Risk filters (Step 9).
 			'rsi_buy_block'      => 85,
 			'rsi_sell_block'     => 15,
@@ -144,6 +148,16 @@ class FnOSP_Settings {
 				: array_map( 'trim', explode( ',', (string) $input['instruments'] ) );
 			$out['instruments'] = array_values( array_filter( array_map( 'sanitize_text_field', $list ) ) );
 		}
+
+		if ( isset( $input['scan_universe'] ) ) {
+			$list = is_array( $input['scan_universe'] )
+				? $input['scan_universe']
+				: array_map( 'trim', explode( ',', (string) $input['scan_universe'] ) );
+			$out['scan_universe'] = array_values( array_filter( array_map( function ( $v ) {
+				return strtoupper( sanitize_text_field( $v ) );
+			}, $list ) ) );
+		}
+		$out['scan_min_confidence'] = max( 50, min( 95, absint( $input['scan_min_confidence'] ?? 68 ) ) );
 
 		$out['rsi_buy_block']  = max( 50, min( 100, absint( $input['rsi_buy_block'] ?? $defaults['rsi_buy_block'] ) ) );
 		$out['rsi_sell_block'] = max( 0, min( 50, absint( $input['rsi_sell_block'] ?? $defaults['rsi_sell_block'] ) ) );

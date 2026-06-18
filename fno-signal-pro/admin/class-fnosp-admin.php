@@ -110,6 +110,7 @@ class FnOSP_Admin {
 			'FNOSP_ADMIN',
 			array(
 				'restUrl'  => esc_url_raw( rest_url( 'fnosp/v1/signal' ) ),
+				'scanUrl'  => esc_url_raw( rest_url( 'fnosp/v1/scan' ) ),
 				'tgTestUrl' => esc_url_raw( rest_url( 'fnosp/v1/telegram-test' ) ),
 				'emailTestUrl' => esc_url_raw( rest_url( 'fnosp/v1/email-test' ) ),
 				'nonce'    => wp_create_nonce( 'wp_rest' ),

@@ -89,7 +89,7 @@ class FnOSP_Free_Data {
 	 * @param string $instrument Instrument.
 	 * @return array|WP_Error
 	 */
-	public function get_snapshot( $instrument ) {
+	public function get_snapshot( $instrument, $opts = array() ) {
 		$instrument = strtoupper( sanitize_text_field( $instrument ) );
 		$symbol     = $this->resolve_symbol( $instrument );
 
@@ -104,7 +104,38 @@ class FnOSP_Free_Data {
 		// Daily candles for previous-day OHLC.
 		$daily = $this->fetch_chart( $symbol, '1d', '1mo' );
 
-		return $this->build_snapshot( $instrument, $intraday, $daily );
+		return $this->build_snapshot( $instrument, $intraday, $daily, is_array( $opts ) ? $opts : array() );
+	}
+
+	/**
+	 * Fast snapshot for scanning: only price/indicators are fetched per symbol;
+	 * option chain & news are neutral; macro (VIX/FII-DII/breadth) is injected
+	 * from a shared fetch so we don't hammer NSE once per symbol.
+	 *
+	 * @param string $instrument Instrument.
+	 * @param array  $macro      Shared macro values (from get_macro()).
+	 * @return array|WP_Error
+	 */
+	public function get_snapshot_lite( $instrument, $macro = array() ) {
+		return $this->get_snapshot( $instrument, array( 'lite' => true, 'macro' => $macro ) );
+	}
+
+	/**
+	 * Fetch shared market-wide macro values once (for the scanner).
+	 *
+	 * @return array
+	 */
+	public function get_macro() {
+		$vix     = $this->fetch_india_vix();
+		$flows   = $this->fetch_fii_dii();
+		$breadth = $this->fetch_market_breadth( 'NIFTY' );
+		return array(
+			'vix'             => $vix['ok'] ? $vix['value'] : 13.0,
+			'fii_net'         => $flows['ok'] ? $flows['fii_net'] : 0.0,
+			'dii_net'         => $flows['ok'] ? $flows['dii_net'] : 0.0,
+			'adv_decline'     => $breadth['ok'] ? $breadth['adv_decline'] : 1.0,
+			'sector_strength' => $breadth['ok'] ? $breadth['sector_strength'] : 0,
+		);
 	}
 
 	/**
@@ -193,7 +224,10 @@ class FnOSP_Free_Data {
 	 * @param array|WP_Error $daily Daily candle bundle.
 	 * @return array
 	 */
-	private function build_snapshot( $instrument, $intra, $daily ) {
+	private function build_snapshot( $instrument, $intra, $daily, $opts = array() ) {
+		$lite  = ! empty( $opts['lite'] );
+		$macro = isset( $opts['macro'] ) && is_array( $opts['macro'] ) ? $opts['macro'] : array();
+
 		$closes = $intra['close'];
 		$highs  = $intra['high'];
 		$lows   = $intra['low'];
@@ -225,21 +259,35 @@ class FnOSP_Free_Data {
 		// Previous-day OHLC from daily candles.
 		$prev = $this->prev_day_ohlc( $daily, $ltp );
 
-		// Best-effort option-chain analytics.
-		$oc = $this->fetch_option_chain( $instrument, $ltp );
+		// Option chain: skip in lite (scanner) mode for speed.
+		$oc = $lite
+			? array( 'ok' => false, 'pcr' => 1.0, 'max_pain' => 0.0, 'iv' => 14.0, 'vix' => 13.0, 'call_oi_chg' => 0, 'put_oi_chg' => 0, 'reason' => 'lite mode' )
+			: $this->fetch_option_chain( $instrument, $ltp );
 
-		// Best-effort India VIX (keyless via chart API) and FII/DII (NSE, best-effort).
-		$vix     = $this->fetch_india_vix();
-		$flows   = $this->fetch_fii_dii();
+		// Macro (VIX, FII/DII, breadth): use shared values in lite mode, else fetch.
+		if ( ! empty( $macro ) ) {
+			$vix     = array( 'ok' => isset( $macro['vix'] ), 'value' => isset( $macro['vix'] ) ? (float) $macro['vix'] : 13.0 );
+			$flows   = array( 'ok' => isset( $macro['fii_net'] ), 'fii_net' => (float) ( $macro['fii_net'] ?? 0 ), 'dii_net' => (float) ( $macro['dii_net'] ?? 0 ) );
+			$breadth = array( 'ok' => isset( $macro['adv_decline'] ), 'adv_decline' => (float) ( $macro['adv_decline'] ?? 1.0 ), 'sector_strength' => (int) ( $macro['sector_strength'] ?? 0 ), 'advances' => 0, 'declines' => 0 );
+		} elseif ( $lite ) {
+			$vix     = array( 'ok' => false, 'value' => 13.0 );
+			$flows   = array( 'ok' => false, 'fii_net' => 0.0, 'dii_net' => 0.0 );
+			$breadth = array( 'ok' => false, 'adv_decline' => 1.0, 'sector_strength' => 0, 'advances' => 0, 'declines' => 0 );
+		} else {
+			$vix     = $this->fetch_india_vix();
+			$flows   = $this->fetch_fii_dii();
+			$breadth = $this->fetch_market_breadth( $instrument );
+		}
 
-		// Best-effort market breadth + sector strength (NSE) and news sentiment (keyless RSS).
-		$breadth = $this->fetch_market_breadth( $instrument );
-		$news    = $this->fetch_news_sentiment( $instrument );
+		// News sentiment: skip in lite mode.
+		$news = $lite
+			? array( 'ok' => false, 'score' => 0.0, 'headlines' => 0, 'reason' => 'lite mode' )
+			: $this->fetch_news_sentiment( $instrument );
 
 		return array(
 			'instrument'   => $instrument,
 			'timestamp'    => time(),
-			'source'       => 'free' . ( $oc['ok'] ? '+oc' : '' ),
+			'source'       => ( $lite ? 'free-lite' : 'free' ) . ( $oc['ok'] ? '+oc' : '' ),
 			'ltp'          => round( $ltp, 2 ),
 			'ohlc'         => array(
 				'open'  => round( $day_open, 2 ),

@@ -88,6 +88,14 @@ foreach ( $instruments as $sym ) {
 		<span class="description"><?php esc_html_e( 'Enter your real option price for accurate targets; leave blank to use the model estimate.', 'fno-signal-pro' ); ?></span>
 	</div>
 
+	<div class="fnosp-controls">
+		<strong style="margin-right:6px;"><?php esc_html_e( 'Stock scanner:', 'fno-signal-pro' ); ?></strong>
+		<button class="button button-secondary" id="fnosp-scan"><?php esc_html_e( "Today's Top Picks (Buy / Sell)", 'fno-signal-pro' ); ?></button>
+		<span class="description"><?php esc_html_e( 'Ranks your scan universe and lists the strongest buy/sell candidates. First run may take ~20–40s.', 'fno-signal-pro' ); ?></span>
+	</div>
+
+	<div id="fnosp-scan-result" class="fnosp-result" aria-live="polite"></div>
+
 	<div id="fnosp-result" class="fnosp-result" aria-live="polite"></div>
 
 	<div class="fnosp-help card">
