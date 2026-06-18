@@ -1,0 +1,60 @@
+/* F&O Signal Pro — admin styles */
+.fnosp-wrap .fnosp-title { display: flex; align-items: center; gap: 8px; }
+.fnosp-wrap .fnosp-title .dashicons { color: #2271b1; font-size: 28px; width: 28px; height: 28px; }
+.fnosp-sub { max-width: 760px; color: #555; }
+
+.fnosp-controls {
+	display: flex; flex-wrap: wrap; align-items: center; gap: 14px;
+	background: #fff; border: 1px solid #dcdcde; border-radius: 8px;
+	padding: 16px; margin: 16px 0;
+}
+.fnosp-controls label { font-weight: 600; }
+.fnosp-ai-toggle { font-weight: 500; display: inline-flex; align-items: center; gap: 6px; }
+.fnosp-ai-toggle.fnosp-disabled { opacity: .6; }
+.fnosp-ai-toggle small { color: #777; font-weight: 400; }
+
+.fnosp-result { margin-top: 8px; }
+
+/* Signal card */
+.fnosp-card {
+	background: #fff; border: 1px solid #dcdcde; border-radius: 10px;
+	padding: 18px; margin: 14px 0; box-shadow: 0 1px 2px rgba(0,0,0,.04);
+}
+.fnosp-card-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+.fnosp-badge {
+	display: inline-block; padding: 6px 14px; border-radius: 999px;
+	font-weight: 700; letter-spacing: .5px; font-size: 14px;
+}
+.fnosp-badge.buy { background: #e6f6ec; color: #14794a; border: 1px solid #9bd9b4; }
+.fnosp-badge.sell { background: #fdeaea; color: #b32424; border: 1px solid #f0a8a8; }
+.fnosp-badge.notrade { background: #f0f0f1; color: #555; border: 1px solid #d0d0d2; }
+
+.fnosp-conf { font-size: 13px; color: #444; }
+.fnosp-meter { height: 8px; border-radius: 4px; background: #eee; overflow: hidden; margin-top: 4px; width: 220px; }
+.fnosp-meter > span { display: block; height: 100%; background: linear-gradient(90deg,#f0ad4e,#2271b1); }
+
+.fnosp-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px,1fr)); gap: 10px; margin: 14px 0; }
+.fnosp-tile { background: #f8f9fb; border: 1px solid #e6e8ec; border-radius: 8px; padding: 10px 12px; }
+.fnosp-tile .k { font-size: 11px; text-transform: uppercase; letter-spacing: .4px; color: #777; }
+.fnosp-tile .v { font-size: 16px; font-weight: 700; color: #1d2327; }
+
+.fnosp-section-title { margin: 16px 0 6px; font-size: 13px; text-transform: uppercase; letter-spacing: .5px; color: #50575e; }
+.fnosp-scores { width: 100%; border-collapse: collapse; }
+.fnosp-scores th, .fnosp-scores td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #eee; font-size: 13px; }
+.fnosp-scorebar { height: 6px; background: #eee; border-radius: 3px; overflow: hidden; min-width: 80px; }
+.fnosp-scorebar > span { display:block; height:100%; background:#2271b1; }
+
+.fnosp-list { margin: 6px 0 0; padding-left: 18px; }
+.fnosp-list li { margin: 3px 0; font-size: 13px; }
+
+.fnosp-verdict { background: #eef4fb; border-left: 4px solid #2271b1; padding: 10px 14px; border-radius: 4px; margin-top: 12px; font-style: italic; }
+.fnosp-ai { background: #fbf7ee; border-left: 4px solid #d8a33b; padding: 10px 14px; border-radius: 4px; margin-top: 12px; white-space: pre-wrap; }
+.fnosp-disclaimer { color: #777; font-size: 11px; margin-top: 12px; }
+.fnosp-loading { color: #2271b1; font-weight: 600; }
+.fnosp-error { color: #b32424; font-weight: 600; }
+.fnosp-help.card { max-width: 760px; }
+.fnosp-help code { display: inline-block; margin: 4px 0; }
+
+
+.fnosp-tg-ok { color: #14794a; font-weight: 600; }
+.fnosp-tg-err { color: #b32424; font-weight: 600; }
