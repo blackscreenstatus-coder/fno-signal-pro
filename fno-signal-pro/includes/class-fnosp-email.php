@@ -181,6 +181,41 @@ class FnOSP_Email {
 	}
 
 	/**
+	 * Format a daily Top Picks digest as HTML email body.
+	 *
+	 * @param array $res Scanner result.
+	 * @return string
+	 */
+	public function format_digest( array $res ) {
+		$e = function ( $v ) {
+			return esc_html( (string) $v );
+		};
+		$m   = $res['macro'];
+		$head = '<div style="background:#11203f;color:#fff;padding:16px 20px">'
+			. '<div style="font-size:18px;font-weight:700">Daily Top Picks</div>'
+			. '<div style="opacity:.85;font-size:12px">VIX ' . $e( $m['vix'] ) . ' · FII ' . $e( $m['fii_net'] ) . ' · DII ' . $e( $m['dii_net'] ) . ' · ' . $e( gmdate( 'Y-m-d' ) ) . '</div>'
+			. '</div>';
+
+		$tbl = function ( $list, $color, $title ) use ( $e ) {
+			$rows = '';
+			foreach ( array_slice( $list, 0, 8 ) as $x ) {
+				$lvl = $x['setup'] ? ( 'Entry ₹' . $x['setup']['entry_low'] . '–₹' . $x['setup']['entry_high'] . ' · SL ₹' . $x['setup']['stop_loss'] . ' · T ₹' . $x['setup']['target1'] ) : '';
+				$rows .= '<tr><td style="padding:5px 8px 5px 0;font-weight:700">' . $e( $x['instrument'] ) . '</td>'
+					. '<td style="padding:5px 8px;color:' . $color . ';font-weight:700">' . $e( $x['confidence'] ) . '%</td>'
+					. '<td style="padding:5px 0;font-size:12px;color:#555">' . $e( $x['trend'] ) . ' · ' . $e( $lvl ) . '</td></tr>';
+			}
+			if ( '' === $rows ) {
+				$rows = '<tr><td style="padding:6px 0;color:#888">No high-confidence ' . $e( $title ) . ' today.</td></tr>';
+			}
+			return '<div style="padding:6px 20px"><div style="font-weight:700;color:' . $color . ';margin:8px 0 2px">' . $e( $title ) . '</div>'
+				. '<table style="width:100%;border-collapse:collapse">' . $rows . '</table></div>';
+		};
+
+		$foot = '<div style="padding:12px 20px;background:#f7f8fa;color:#888;font-size:11px">Educational analysis, not investment advice. F&amp;O involves substantial risk.</div>';
+		return $head . $tbl( $res['buy'], '#14794a', 'BUY' ) . $tbl( $res['sell'], '#b32424', 'SELL' ) . $foot;
+	}
+
+	/**
 	 * Send a test email.
 	 *
 	 * @return array|WP_Error

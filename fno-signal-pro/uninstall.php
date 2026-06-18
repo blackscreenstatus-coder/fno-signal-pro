@@ -30,3 +30,8 @@ while ( $ts ) {
 	wp_unschedule_event( $ts, 'fnosp_scan_event' );
 	$ts = wp_next_scheduled( 'fnosp_scan_event' );
 }
+$dts = wp_next_scheduled( 'fnosp_digest_event' );
+while ( $dts ) {
+	wp_unschedule_event( $dts, 'fnosp_digest_event' );
+	$dts = wp_next_scheduled( 'fnosp_digest_event' );
+}

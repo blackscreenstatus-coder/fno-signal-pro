@@ -144,6 +144,19 @@ $instruments_csv = implode( ', ', (array) $values['instruments'] );
 				<th scope="row"><?php esc_html_e( 'Scanner min confidence (%)', 'fno-signal-pro' ); ?></th>
 				<td><input type="number" min="50" max="95" name="fnosp[scan_min_confidence]" value="<?php echo esc_attr( $values['scan_min_confidence'] ); ?>" /> <span class="description"><?php esc_html_e( 'Only list stocks at or above this confidence.', 'fno-signal-pro' ); ?></span></td>
 			</tr>
+			<tr>
+				<th scope="row"><?php esc_html_e( 'Include indices in scan', 'fno-signal-pro' ); ?></th>
+				<td><label><input type="checkbox" name="fnosp[scan_include_indices]" value="1" <?php checked( $values['scan_include_indices'], 1 ); ?> /> <?php esc_html_e( 'Also rank NIFTY/BANKNIFTY/FINNIFTY/SENSEX/MIDCPNIFTY alongside stocks', 'fno-signal-pro' ); ?></label></td>
+			</tr>
+			<tr>
+				<th scope="row"><?php esc_html_e( 'Daily digest', 'fno-signal-pro' ); ?></th>
+				<td>
+					<label><input type="checkbox" name="fnosp[digest_enabled]" value="1" <?php checked( $values['digest_enabled'], 1 ); ?> /> <?php esc_html_e( 'Auto-send a Top Picks digest every day via Telegram + Email', 'fno-signal-pro' ); ?></label>
+					&nbsp;&nbsp;<?php esc_html_e( 'at (IST)', 'fno-signal-pro' ); ?>
+					<input type="text" name="fnosp[digest_time]" value="<?php echo esc_attr( $values['digest_time'] ); ?>" placeholder="09:00" style="width:70px;" />
+					<p class="description"><?php esc_html_e( 'Requires Telegram and/or Email alerts configured above. Time is IST, 24-hour HH:MM. Relies on WP-Cron (site traffic) — use a real server cron for exact timing.', 'fno-signal-pro' ); ?></p>
+				</td>
+			</tr>
 		</table>
 
 		<h2 class="title"><?php esc_html_e( 'Frontend', 'fno-signal-pro' ); ?></h2>

@@ -46,6 +46,11 @@ class FnOSP_Settings {
 			// Scanner ("Today's Top Picks") — universe of stocks to rank.
 			'scan_universe'      => array( 'RELIANCE', 'HDFCBANK', 'ICICIBANK', 'INFY', 'TCS', 'SBIN', 'AXISBANK', 'ITC', 'LT', 'TATAMOTORS', 'ACC', 'SUZLON', 'WIPRO', 'MARUTI', 'BAJFINANCE', 'HINDUNILVR', 'KOTAKBANK', 'SUNPHARMA' ),
 			'scan_min_confidence' => 68,
+			'scan_include_indices' => 1,
+
+			// Daily "Top Picks" digest (Telegram + Email).
+			'digest_enabled'     => 0,
+			'digest_time'        => '09:00', // IST HH:MM.
 
 			// Risk filters (Step 9).
 			'rsi_buy_block'      => 85,
@@ -158,6 +163,11 @@ class FnOSP_Settings {
 			}, $list ) ) );
 		}
 		$out['scan_min_confidence'] = max( 50, min( 95, absint( $input['scan_min_confidence'] ?? 68 ) ) );
+		$out['scan_include_indices'] = empty( $input['scan_include_indices'] ) ? 0 : 1;
+
+		$out['digest_enabled'] = empty( $input['digest_enabled'] ) ? 0 : 1;
+		$dt = isset( $input['digest_time'] ) ? trim( (string) $input['digest_time'] ) : '09:00';
+		$out['digest_time'] = preg_match( '/^([01]?\d|2[0-3]):[0-5]\d$/', $dt ) ? $dt : '09:00';
 
 		$out['rsi_buy_block']  = max( 50, min( 100, absint( $input['rsi_buy_block'] ?? $defaults['rsi_buy_block'] ) ) );
 		$out['rsi_sell_block'] = max( 0, min( 50, absint( $input['rsi_sell_block'] ?? $defaults['rsi_sell_block'] ) ) );

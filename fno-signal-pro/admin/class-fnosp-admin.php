@@ -78,6 +78,11 @@ class FnOSP_Admin {
 		// Bust caches when settings change.
 		FnOSP_Cache::flush_all();
 
+		// Reschedule the daily digest with any new time/toggle.
+		if ( class_exists( 'FnOSP_Scheduler' ) ) {
+			FnOSP_Scheduler::reschedule_digest();
+		}
+
 		add_settings_error( 'fnosp', 'fnosp_saved', __( 'Settings saved.', 'fno-signal-pro' ), 'updated' );
 		set_transient( 'fnosp_admin_notice', 'saved', 30 );
 

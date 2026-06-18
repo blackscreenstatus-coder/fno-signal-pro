@@ -184,6 +184,42 @@ class FnOSP_Telegram {
 	}
 
 	/**
+	 * Format a daily Top Picks digest message (HTML).
+	 *
+	 * @param array $res Scanner result.
+	 * @return string
+	 */
+	public function format_digest( array $res ) {
+		$e = function ( $v ) {
+			return esc_html( (string) $v );
+		};
+		$lines   = array();
+		$lines[] = '📊 <b>F&amp;O Signal Pro — Daily Top Picks</b>';
+		$m       = $res['macro'];
+		$lines[] = sprintf( 'VIX %s · FII %s%.0f · DII %s%.0f', $e( $m['vix'] ), $m['fii_net'] >= 0 ? '+' : '', $m['fii_net'], $m['dii_net'] >= 0 ? '+' : '', $m['dii_net'] );
+
+		$fmt = function ( $list ) use ( $e ) {
+			$out = array();
+			foreach ( array_slice( $list, 0, 6 ) as $x ) {
+				$lvl = $x['setup'] ? ( ' @ ₹' . $x['setup']['entry_low'] . '–' . $x['setup']['entry_high'] . ', SL ₹' . $x['setup']['stop_loss'] ) : '';
+				$out[] = sprintf( '• <b>%s</b> %s%% (%s)%s', $e( $x['instrument'] ), $e( $x['confidence'] ), $e( $x['trend'] ), $e( $lvl ) );
+			}
+			return $out;
+		};
+
+		$lines[] = '';
+		$lines[] = '🟢 <b>BUY</b>';
+		$lines   = array_merge( $lines, ! empty( $res['buy'] ) ? $fmt( $res['buy'] ) : array( '—' ) );
+		$lines[] = '';
+		$lines[] = '🔴 <b>SELL</b>';
+		$lines   = array_merge( $lines, ! empty( $res['sell'] ) ? $fmt( $res['sell'] ) : array( '—' ) );
+
+		$lines[] = '';
+		$lines[] = '<i>Educational analysis, not investment advice.</i>';
+		return implode( "\n", $lines );
+	}
+
+	/**
 	 * Send a test message.
 	 *
 	 * @return array|WP_Error

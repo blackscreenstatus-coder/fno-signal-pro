@@ -17,6 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 class FnOSP_Scheduler {
 
 	const CRON_HOOK     = 'fnosp_scan_event';
+	const DIGEST_HOOK   = 'fnosp_digest_event';
 	const SCHEDULE_SLUG = 'fnosp_five_minutes';
 	const STATE_OPTION  = 'fnosp_alert_state';
 
@@ -30,6 +31,7 @@ class FnOSP_Scheduler {
 	public function hooks() {
 		add_filter( 'cron_schedules', array( $this, 'add_schedule' ) );
 		add_action( self::CRON_HOOK, array( $this, 'run_scan' ) );
+		add_action( self::DIGEST_HOOK, array( $this, 'run_digest' ) );
 		add_action( 'init', array( $this, 'ensure_scheduled' ) );
 	}
 
@@ -56,6 +58,88 @@ class FnOSP_Scheduler {
 		if ( ! wp_next_scheduled( self::CRON_HOOK ) ) {
 			wp_schedule_event( time() + 60, self::SCHEDULE_SLUG, self::CRON_HOOK );
 		}
+		// Daily digest (only if enabled).
+		if ( (int) $this->settings->get( 'digest_enabled', 0 ) === 1 ) {
+			if ( ! wp_next_scheduled( self::DIGEST_HOOK ) ) {
+				wp_schedule_event( self::next_digest_ts( (string) $this->settings->get( 'digest_time', '09:00' ) ), 'daily', self::DIGEST_HOOK );
+			}
+		} else {
+			self::clear_digest();
+		}
+	}
+
+	/**
+	 * Reschedule the digest (call after settings change).
+	 */
+	public static function reschedule_digest() {
+		self::clear_digest();
+		$s = new FnOSP_Settings();
+		if ( (int) $s->get( 'digest_enabled', 0 ) === 1 ) {
+			wp_schedule_event( self::next_digest_ts( (string) $s->get( 'digest_time', '09:00' ) ), 'daily', self::DIGEST_HOOK );
+		}
+	}
+
+	/**
+	 * Next UTC timestamp for an IST HH:MM time.
+	 *
+	 * @param string $hhmm Time "HH:MM" in IST.
+	 * @return int
+	 */
+	public static function next_digest_ts( $hhmm ) {
+		$parts = explode( ':', $hhmm );
+		$h     = isset( $parts[0] ) ? (int) $parts[0] : 9;
+		$m     = isset( $parts[1] ) ? (int) $parts[1] : 0;
+		$off   = 19800; // IST = UTC + 5:30.
+		$now   = time();
+		$ist   = $now + $off;
+		$mid   = $ist - ( $ist % 86400 ); // Start of IST day (shifted epoch).
+		$target = $mid + $h * 3600 + $m * 60;
+		if ( $target <= $ist ) {
+			$target += 86400;
+		}
+		return $target - $off;
+	}
+
+	/**
+	 * Clear the digest event.
+	 */
+	public static function clear_digest() {
+		$ts = wp_next_scheduled( self::DIGEST_HOOK );
+		while ( $ts ) {
+			wp_unschedule_event( $ts, self::DIGEST_HOOK );
+			$ts = wp_next_scheduled( self::DIGEST_HOOK );
+		}
+	}
+
+	/**
+	 * Daily digest cron: run the scan and send a Top Picks summary.
+	 */
+	public function run_digest() {
+		if ( (int) $this->settings->get( 'digest_enabled', 0 ) !== 1 ) {
+			return;
+		}
+		$channels = array();
+		$telegram = new FnOSP_Telegram( $this->settings );
+		if ( $telegram->ready() ) {
+			$channels['tg'] = $telegram;
+		}
+		$email = new FnOSP_Email( $this->settings );
+		if ( $email->ready() ) {
+			$channels['email'] = $email;
+		}
+		if ( empty( $channels ) ) {
+			return;
+		}
+
+		$scanner = new FnOSP_Scanner( $this->settings );
+		$res     = $scanner->run( true );
+
+		if ( isset( $channels['tg'] ) ) {
+			$channels['tg']->send( $channels['tg']->format_digest( $res ) );
+		}
+		if ( isset( $channels['email'] ) ) {
+			$channels['email']->send( __( 'F&O Signal Pro — Daily Top Picks', 'fno-signal-pro' ), $channels['email']->format_digest( $res ) );
+		}
 	}
 
 	/**
@@ -67,6 +151,7 @@ class FnOSP_Scheduler {
 			wp_unschedule_event( $ts, self::CRON_HOOK );
 			$ts = wp_next_scheduled( self::CRON_HOOK );
 		}
+		self::clear_digest();
 	}
 
 	/**
