@@ -62,6 +62,8 @@ class FnOSP_Settings {
 			'alert_cooldown'           => 60,  // Minutes between repeat alerts (same direction).
 			'alert_market_hours_only'  => 1,
 			'alert_use_ai'             => 0,
+			'alert_include_option'     => 1,  // Include an ATM option plan in alerts.
+			'alert_option_dte'         => 7,
 
 			// Email alerts.
 			'email_enabled'            => 0,
@@ -177,6 +179,8 @@ class FnOSP_Settings {
 		$out['alert_cooldown']          = max( 1, min( 1440, absint( $input['alert_cooldown'] ?? 60 ) ) );
 		$out['alert_market_hours_only'] = empty( $input['alert_market_hours_only'] ) ? 0 : 1;
 		$out['alert_use_ai']            = empty( $input['alert_use_ai'] ) ? 0 : 1;
+		$out['alert_include_option']    = empty( $input['alert_include_option'] ) ? 0 : 1;
+		$out['alert_option_dte']        = max( 1, min( 60, absint( $input['alert_option_dte'] ?? 7 ) ) );
 
 		// Email alerts.
 		$out['email_enabled']    = empty( $input['email_enabled'] ) ? 0 : 1;

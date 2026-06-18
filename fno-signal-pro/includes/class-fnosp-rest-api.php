@@ -65,6 +65,10 @@ class FnOSP_Rest_Api {
 						'type'     => 'integer',
 						'required' => false,
 					),
+					'premium'    => array(
+						'type'     => 'number',
+						'required' => false,
+					),
 				),
 			)
 		);
@@ -185,9 +189,10 @@ class FnOSP_Rest_Api {
 		$strike   = $req->get_param( 'strike' );
 		$opt_type = $req->get_param( 'opt_type' );
 		$dte      = $req->get_param( 'dte' );
+		$premium  = $req->get_param( 'premium' );
 		$has_opt  = ! empty( $strike ) && (float) $strike > 0;
 
-		$opt_suffix = $has_opt ? ( '|' . (float) $strike . ( $opt_type ? strtoupper( $opt_type ) : 'CE' ) . '|' . (int) $dte ) : '';
+		$opt_suffix = $has_opt ? ( '|' . (float) $strike . ( $opt_type ? strtoupper( $opt_type ) : 'CE' ) . '|' . (int) $dte . '|' . (float) $premium ) : '';
 		$cache_key = FnOSP_Cache::key( $instrument . $opt_suffix, $use_ai );
 		$ttl       = (int) $this->settings->get( 'cache_ttl', 60 );
 
@@ -205,6 +210,9 @@ class FnOSP_Rest_Api {
 			$gen_opts['strike']   = (float) $strike;
 			$gen_opts['opt_type'] = $opt_type ? strtoupper( $opt_type ) : 'CE';
 			$gen_opts['dte']      = $dte ? max( 1, (int) $dte ) : 7;
+			if ( ! empty( $premium ) && (float) $premium > 0 ) {
+				$gen_opts['premium'] = (float) $premium;
+			}
 		}
 		$result = $engine->generate( $instrument, $gen_opts );
 

@@ -94,6 +94,8 @@ class FnOSP_Scheduler {
 		$directions = (array) $this->settings->get( 'alert_directions', array( 'BUY', 'SELL' ) );
 		$use_ai     = (bool) $this->settings->get( 'alert_use_ai', 0 ) && $this->settings->ai_ready();
 		$cooldown   = (int) $this->settings->get( 'alert_cooldown', 60 ) * 60; // minutes -> seconds.
+		$incl_opt   = (int) $this->settings->get( 'alert_include_option', 1 ) === 1;
+		$opt_dte    = (int) $this->settings->get( 'alert_option_dte', 7 );
 
 		$instruments = (array) $this->settings->get( 'alert_instruments', array() );
 		if ( empty( $instruments ) ) {
@@ -112,7 +114,11 @@ class FnOSP_Scheduler {
 				continue;
 			}
 
-			$result = $engine->generate( $instrument, array( 'use_ai' => $use_ai ) );
+			$result = $engine->generate( $instrument, array(
+				'use_ai'      => $use_ai,
+				'auto_option' => $incl_opt,
+				'dte'         => $opt_dte,
+			) );
 			if ( is_wp_error( $result ) ) {
 				continue;
 			}

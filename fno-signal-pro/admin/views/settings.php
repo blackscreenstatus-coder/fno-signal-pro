@@ -194,6 +194,14 @@ $instruments_csv = implode( ', ', (array) $values['instruments'] );
 				<td><label><input type="checkbox" name="fnosp[alert_use_ai]" value="1" <?php checked( $values['alert_use_ai'], 1 ); ?> /> <?php esc_html_e( 'Add AI narrative to alerts (requires AI key; slower)', 'fno-signal-pro' ); ?></label></td>
 			</tr>
 			<tr>
+				<th scope="row"><?php esc_html_e( 'Include option plan', 'fno-signal-pro' ); ?></th>
+				<td>
+					<label><input type="checkbox" name="fnosp[alert_include_option]" value="1" <?php checked( $values['alert_include_option'], 1 ); ?> /> <?php esc_html_e( 'Add an ATM Call/Put buy-sell plan to each alert', 'fno-signal-pro' ); ?></label>
+					&nbsp;&nbsp;<?php esc_html_e( 'Days to expiry:', 'fno-signal-pro' ); ?>
+					<input type="number" min="1" max="60" name="fnosp[alert_option_dte]" value="<?php echo esc_attr( $values['alert_option_dte'] ); ?>" style="width:70px;" />
+				</td>
+			</tr>
+			<tr>
 				<th scope="row"><?php esc_html_e( 'Test connection', 'fno-signal-pro' ); ?></th>
 				<td>
 					<button type="button" class="button" id="fnosp-tg-test"><?php esc_html_e( 'Send test message', 'fno-signal-pro' ); ?></button>

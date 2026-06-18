@@ -133,8 +133,16 @@ class FnOSP_Signal_Engine {
 				$direction,
 				(float) $opts['strike'],
 				isset( $opts['opt_type'] ) ? strtoupper( $opts['opt_type'] ) : 'CE',
-				isset( $opts['dte'] ) ? max( 1, (int) $opts['dte'] ) : 7
+				isset( $opts['dte'] ) ? max( 1, (int) $opts['dte'] ) : 7,
+				isset( $opts['premium'] ) ? (float) $opts['premium'] : 0.0
 			);
+		} elseif ( ! empty( $opts['auto_option'] ) && 'NO TRADE' !== $direction ) {
+			// Auto ATM plan matching the signal direction (used by alerts).
+			$step  = $this->strike_step( $snapshot['instrument'], $snapshot['ltp'] );
+			$atm   = round( $snapshot['ltp'] / $step ) * $step;
+			$otype = ( 'BUY' === $direction ) ? 'CE' : 'PE';
+			$dte   = isset( $opts['dte'] ) ? max( 1, (int) $opts['dte'] ) : 7;
+			$option_plan = $this->build_option_plan( $snapshot, $direction, $atm, $otype, $dte, 0.0 );
 		}
 
 		$result = array(
@@ -188,7 +196,7 @@ class FnOSP_Signal_Engine {
 	// Per-strike option plan: when to BUY this strike and when to SELL it.
 	// Premiums are Black-Scholes estimates (verify against the live chain).
 	// ---------------------------------------------------------------------
-	private function build_option_plan( $s, $direction, $strike, $type, $dte ) {
+	private function build_option_plan( $s, $direction, $strike, $type, $dte, $live = 0.0 ) {
 		$type = ( 'PE' === $type ) ? 'PE' : 'CE';
 		$ltp  = (float) $s['ltp'];
 		$atr  = max( 0.0001, (float) $s['atr'] );
@@ -202,7 +210,7 @@ class FnOSP_Signal_Engine {
 
 		$is_call   = ( 'CE' === $type );
 		$delta     = FnOSP_Indicators::bs_delta( $type, $ltp, $strike, $t, $r, $iv );
-		$prem_now  = $price_at( $ltp );
+		$model_now = $price_at( $ltp );
 
 		// Directional spot levels for THIS option type (CE profits when spot rises; PE when it falls).
 		if ( $is_call ) {
@@ -226,11 +234,15 @@ class FnOSP_Signal_Engine {
 		}
 
 		// Premium levels (entry / targets / stop) for the option itself.
+		// If a live premium is supplied, scale the model curve to anchor on it.
+		$factor  = ( $live > 0 && $model_now > 0 ) ? ( $live / $model_now ) : 1.0;
+		$prem_src = ( $live > 0 ) ? 'live' : 'model estimate';
+		$prem_now   = ( $live > 0 ) ? round( $live, 2 ) : $model_now;
 		$prem_entry = $prem_now;
-		$prem_t1    = $price_at( $t1_spot );
-		$prem_t2    = $price_at( $t2_spot );
-		$prem_t3    = $price_at( $t3_spot );
-		$prem_sl    = $price_at( $sl_spot );
+		$prem_t1    = round( $price_at( $t1_spot ) * $factor, 2 );
+		$prem_t2    = round( $price_at( $t2_spot ) * $factor, 2 );
+		$prem_t3    = round( $price_at( $t3_spot ) * $factor, 2 );
+		$prem_sl    = round( $price_at( $sl_spot ) * $factor, 2 );
 
 		// Alignment with the engine's directional signal.
 		$aligned = ( $is_call && 'BUY' === $direction ) || ( ! $is_call && 'SELL' === $direction );
@@ -255,6 +267,7 @@ class FnOSP_Signal_Engine {
 			'moneyness'     => $moneyness,
 			'delta'         => $delta,
 			'premium_now'   => $prem_now,
+			'premium_source' => $prem_src,
 			'aligned'       => $aligned,
 			'align_note'    => $align_note,
 
@@ -284,7 +297,9 @@ class FnOSP_Signal_Engine {
 
 			'notes'         => array(
 				$align_note,
-				'Premiums are Black-Scholes estimates from spot, strike, ' . round( $iv * 100, 1 ) . '% IV and ' . $dte . ' days to expiry — verify against the live option chain before trading.',
+				( $live > 0 )
+					? 'Targets/stop premiums are scaled to your live entry premium of ₹' . number_format_i18n( $live, 2 ) . ' (more accurate).'
+					: 'Premiums are Black-Scholes estimates from spot, strike, ' . round( $iv * 100, 1 ) . '% IV and ' . $dte . ' days to expiry — enter your live premium for accuracy.',
 				'Decision-support only, not financial advice.',
 			),
 		);

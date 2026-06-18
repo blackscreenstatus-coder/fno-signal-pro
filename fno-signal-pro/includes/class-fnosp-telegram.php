@@ -157,6 +157,25 @@ class FnOSP_Telegram {
 			$lines[] = $e( $r['layman_summary']['text'] );
 		}
 
+		if ( ! empty( $r['option_plan'] ) ) {
+			$op      = $r['option_plan'];
+			$lines[] = '';
+			$lines[] = sprintf( '🧩 <b>Option: %s</b> (%s, %dd, IV %s%%)', $e( $op['label'] ), $e( $op['moneyness'] ), (int) $op['dte'], $e( $op['iv_used'] ) );
+			$lines[] = $e( $op['buy_when']['condition'] ) . ' · prem ' . $e( $op['buy_when']['est_premium'] );
+			if ( ! empty( $op['sell_when']['targets'] ) ) {
+				$tg = $op['sell_when']['targets'];
+				$lines[] = sprintf(
+					'Sell: ₹%s / ₹%s / ₹%s (premium)',
+					$e( $tg[0]['premium'] ),
+					$e( $tg[1]['premium'] ),
+					$e( $tg[2]['premium'] )
+				);
+			}
+			if ( ! empty( $op['sell_when']['stop_loss']['premium'] ) ) {
+				$lines[] = 'Stop premium ≈ ₹' . $e( $op['sell_when']['stop_loss']['premium'] );
+			}
+		}
+
 		$lines[] = '';
 		$lines[] = '<i>Educational analysis, not investment advice. F&amp;O is high risk.</i>';
 		$lines[] = sprintf( '🕒 %s', $e( gmdate( 'Y-m-d H:i', time() ) . ' UTC' ) );

@@ -142,9 +142,23 @@ class FnOSP_Email {
 				. '</div>';
 		}
 
+		$option = '';
+		if ( ! empty( $r['option_plan'] ) ) {
+			$op    = $r['option_plan'];
+			$rows2 = '';
+			foreach ( $op['sell_when']['targets'] as $tg ) {
+				$rows2 .= '<tr><td style="padding:3px 8px 3px 0;color:#666">Sell @ underlying ' . $e( $tg['spot'] ) . '</td><td style="padding:3px 0;font-weight:600">≈ ₹' . $e( $tg['premium'] ) . '</td></tr>';
+			}
+			$option = '<div style="margin:0 20px 12px;padding:10px 12px;background:#f3f6fc;border-left:4px solid #2563eb;border-radius:6px;font-size:13px;color:#234">'
+				. '<div style="font-weight:700;color:#1d3a73;margin-bottom:4px">Option plan — ' . $e( $op['label'] ) . ' (' . $e( $op['moneyness'] ) . ', ' . (int) $op['dte'] . 'd, IV ' . $e( $op['iv_used'] ) . '%)</div>'
+				. '<div>' . $e( $op['buy_when']['condition'] ) . ' &middot; entry premium ' . $e( $op['buy_when']['est_premium'] ) . '</div>'
+				. '<table style="width:100%;border-collapse:collapse;margin-top:4px">' . $rows2 . '</table>'
+				. '<div style="margin-top:4px">Stop premium ≈ ₹' . $e( $op['sell_when']['stop_loss']['premium'] ) . '</div>'
+				. '</div>';
+		}
+
 		$notes = '';
-		if ( ! empty( $r['data_notes'] ) ) {
-			$items = '';
+		if ( ! empty( $r['data_notes'] ) ) {			$items = '';
 			foreach ( (array) $r['data_notes'] as $n ) {
 				$items .= '<li>' . $e( $n ) . '</li>';
 			}
@@ -156,7 +170,7 @@ class FnOSP_Email {
 			. esc_html( gmdate( 'Y-m-d H:i', time() ) ) . ' UTC'
 			. '</div>';
 
-		return $head . '<div style="padding:8px 20px">' . $table . '</div>' . $verdict . $layman . $notes . $foot;
+		return $head . '<div style="padding:8px 20px">' . $table . '</div>' . $verdict . $layman . $option . $notes . $foot;
 	}
 
 	private function row( $k, $v ) {

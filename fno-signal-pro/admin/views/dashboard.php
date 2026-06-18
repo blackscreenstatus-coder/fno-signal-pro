@@ -83,7 +83,9 @@ foreach ( $instruments as $sym ) {
 		</select>
 		<label for="fnosp-dte"><?php esc_html_e( 'Days to expiry', 'fno-signal-pro' ); ?></label>
 		<input type="number" id="fnosp-dte" min="1" max="60" value="7" style="width:70px;" />
-		<span class="description"><?php esc_html_e( 'Leave strike blank for a plain signal.', 'fno-signal-pro' ); ?></span>
+		<label for="fnosp-premium"><?php esc_html_e( 'Live premium ₹', 'fno-signal-pro' ); ?></label>
+		<input type="number" id="fnosp-premium" step="0.05" placeholder="optional" style="width:100px;" />
+		<span class="description"><?php esc_html_e( 'Enter your real option price for accurate targets; leave blank to use the model estimate.', 'fno-signal-pro' ); ?></span>
 	</div>
 
 	<div id="fnosp-result" class="fnosp-result" aria-live="polite"></div>

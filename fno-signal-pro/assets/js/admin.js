@@ -183,7 +183,7 @@
 			wrap.appendChild( el( 'div', 'fnosp-section-title', 'Option Plan — ' + esc( op.label ) + ' (' + esc( op.moneyness ) + ', ' + esc( op.dte ) + 'd, IV ' + esc( op.iv_used ) + '%)' ) );
 			var box = el( 'div', 'fnosp-layman' );
 
-			box.appendChild( el( 'div', '', '<strong>Now:</strong> est. premium ≈ ₹' + esc( op.premium_now ) + ' · delta ' + esc( op.delta ) + ( op.aligned ? ' · <span style="color:#14794a">aligned with signal</span>' : ' · <span style="color:#b32424">counter-trend</span>' ) ) );
+			box.appendChild( el( 'div', '', '<strong>Now:</strong> ' + esc( op.premium_source || 'estimate' ) + ' premium ≈ ₹' + esc( op.premium_now ) + ' · delta ' + esc( op.delta ) + ( op.aligned ? ' · <span style="color:#14794a">aligned with signal</span>' : ' · <span style="color:#b32424">counter-trend</span>' ) ) );
 
 			if ( op.buy_when ) {
 				box.appendChild( el( 'div', 'fnosp-layman-head', 'When to BUY' ) );
@@ -247,6 +247,11 @@
 			var ot = document.getElementById( 'fnosp-opt-type' ).value;
 			var dte = document.getElementById( 'fnosp-dte' ).value || 7;
 			url += '&strike=' + encodeURIComponent( strike ) + '&opt_type=' + encodeURIComponent( ot ) + '&dte=' + encodeURIComponent( dte );
+			var premEl = document.getElementById( 'fnosp-premium' );
+			var prem = premEl ? premEl.value : '';
+			if ( prem && parseFloat( prem ) > 0 ) {
+				url += '&premium=' + encodeURIComponent( prem );
+			}
 		}
 
 		fetch( url, {
