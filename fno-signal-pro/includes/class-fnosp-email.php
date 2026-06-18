@@ -132,6 +132,16 @@ class FnOSP_Email {
 			$verdict = '<div style="padding:0 20px 12px;font-style:italic;color:#333">' . $e( $r['final_verdict'] ) . '</div>';
 		}
 
+		$layman = '';
+		if ( ! empty( $r['layman_summary']['text'] ) ) {
+			$head_l = ! empty( $r['layman_summary']['headline'] ) ? '<div style="font-weight:700;color:#14794a;margin-bottom:4px">' . $e( $r['layman_summary']['headline'] ) . '</div>' : '';
+			$layman = '<div style="margin:0 20px 12px;padding:10px 12px;background:#eefaf1;border-left:4px solid #14794a;border-radius:6px;font-size:13px;color:#234">'
+				. '<div style="font-size:11px;text-transform:uppercase;color:#14794a;margin-bottom:4px">In simple words</div>'
+				. $head_l
+				. $e( $r['layman_summary']['text'] )
+				. '</div>';
+		}
+
 		$notes = '';
 		if ( ! empty( $r['data_notes'] ) ) {
 			$items = '';
@@ -146,7 +156,7 @@ class FnOSP_Email {
 			. esc_html( gmdate( 'Y-m-d H:i', time() ) ) . ' UTC'
 			. '</div>';
 
-		return $head . '<div style="padding:8px 20px">' . $table . '</div>' . $verdict . $notes . $foot;
+		return $head . '<div style="padding:8px 20px">' . $table . '</div>' . $verdict . $layman . $notes . $foot;
 	}
 
 	private function row( $k, $v ) {

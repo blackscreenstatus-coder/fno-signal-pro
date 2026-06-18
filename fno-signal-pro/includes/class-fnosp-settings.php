@@ -41,7 +41,7 @@ class FnOSP_Settings {
 			'confidence_min'     => 75,   // Only emit a trade above this %.
 			'cache_ttl'          => 60,   // Seconds. Keeps response fast.
 			'default_instrument' => 'NIFTY',
-			'instruments'        => array( 'NIFTY', 'BANKNIFTY', 'FINNIFTY', 'SENSEX', 'MIDCPNIFTY' ),
+			'instruments'        => array( 'NIFTY', 'BANKNIFTY', 'FINNIFTY', 'SENSEX', 'MIDCPNIFTY', 'INFY', 'ACC', 'SUZLON' ),
 
 			// Risk filters (Step 9).
 			'rsi_buy_block'      => 85,

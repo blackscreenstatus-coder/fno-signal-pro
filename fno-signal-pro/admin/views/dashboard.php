@@ -13,6 +13,18 @@ if ( ! defined( 'ABSPATH' ) ) {
 $instruments = (array) $settings->get( 'instruments', array() );
 $default     = $settings->get( 'default_instrument', 'NIFTY' );
 $ai_ready    = $settings->ai_ready();
+
+// Split instruments into Indices vs Stocks for clearer sections.
+$index_set  = array( 'NIFTY', 'NIFTY50', 'BANKNIFTY', 'FINNIFTY', 'SENSEX', 'MIDCPNIFTY' );
+$idx_list   = array();
+$stock_list = array();
+foreach ( $instruments as $sym ) {
+	if ( in_array( strtoupper( $sym ), $index_set, true ) ) {
+		$idx_list[] = $sym;
+	} else {
+		$stock_list[] = $sym;
+	}
+}
 ?>
 <div class="wrap fnosp-wrap">
 	<h1 class="fnosp-title">
@@ -27,11 +39,20 @@ $ai_ready    = $settings->ai_ready();
 	<div class="fnosp-controls">
 		<label for="fnosp-instrument"><?php esc_html_e( 'Instrument', 'fno-signal-pro' ); ?></label>
 		<select id="fnosp-instrument">
-			<?php foreach ( $instruments as $sym ) : ?>
-				<option value="<?php echo esc_attr( $sym ); ?>" <?php selected( $sym, $default ); ?>>
-					<?php echo esc_html( $sym ); ?>
-				</option>
-			<?php endforeach; ?>
+			<?php if ( ! empty( $idx_list ) ) : ?>
+				<optgroup label="<?php esc_attr_e( 'Indices', 'fno-signal-pro' ); ?>">
+					<?php foreach ( $idx_list as $sym ) : ?>
+						<option value="<?php echo esc_attr( $sym ); ?>" <?php selected( $sym, $default ); ?>><?php echo esc_html( $sym ); ?></option>
+					<?php endforeach; ?>
+				</optgroup>
+			<?php endif; ?>
+			<?php if ( ! empty( $stock_list ) ) : ?>
+				<optgroup label="<?php esc_attr_e( 'Stocks', 'fno-signal-pro' ); ?>">
+					<?php foreach ( $stock_list as $sym ) : ?>
+						<option value="<?php echo esc_attr( $sym ); ?>" <?php selected( $sym, $default ); ?>><?php echo esc_html( $sym ); ?></option>
+					<?php endforeach; ?>
+				</optgroup>
+			<?php endif; ?>
 		</select>
 
 		<label class="fnosp-ai-toggle <?php echo $ai_ready ? '' : 'fnosp-disabled'; ?>">

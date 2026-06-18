@@ -53,6 +53,17 @@
 			html += '<div class="fnosp-w-verdict">' + esc( data.final_verdict ) + '</div>';
 		}
 
+		if ( data.layman_summary ) {
+			html += '<div class="fnosp-w-layman">';
+			if ( data.layman_summary.headline ) {
+				html += '<div class="fnosp-w-layman-head">' + esc( data.layman_summary.headline ) + '</div>';
+			}
+			if ( data.layman_summary.text ) {
+				html += '<div>' + esc( data.layman_summary.text ) + '</div>';
+			}
+			html += '</div>';
+		}
+
 		if ( data.ai && data.ai.narrative ) {
 			html += '<div class="fnosp-w-ai">' + esc( data.ai.narrative ) + '</div>';
 		}

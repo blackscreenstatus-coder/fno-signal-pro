@@ -150,6 +150,7 @@ class FnOSP_Signal_Engine {
 			'option_strategy' => $strategy,
 			'probabilities' => $probabilities,
 			'final_verdict' => $this->final_verdict( $direction, $snapshot, $net ),
+			'layman_summary' => $this->build_layman_summary( $direction, $snapshot, $setup, $strategy, $confidence, $this->trend_label( $net ) ),
 			'data_notes'    => isset( $snapshot['data_notes'] ) ? (array) $snapshot['data_notes'] : array(),
 			'snapshot'      => $snapshot,
 			'ai'            => null,
@@ -168,6 +169,66 @@ class FnOSP_Signal_Engine {
 		}
 
 		return $result;
+	}
+
+	// ---------------------------------------------------------------------
+	// Plain-language ("layman") recommendation summary.
+	// ---------------------------------------------------------------------
+	private function build_layman_summary( $direction, $s, $setup, $strategy, $confidence, $trend_label ) {
+		$inst = $s['instrument'];
+		$ltp  = number_format_i18n( (float) $s['ltp'], 2 );
+
+		if ( 'NO TRADE' === $direction || null === $setup ) {
+			return array(
+				'headline' => sprintf( 'Wait and watch on %s', $inst ),
+				'text'     => sprintf(
+					'In plain English: right now there is no clear, high-confidence trade in %s (it is reading "%s"). The smartest move — especially for a beginner — is to stay out and keep your money safe until a cleaner setup appears. Not trading is also a decision.',
+					$inst,
+					strtolower( $trend_label )
+				),
+				'steps'    => array(
+					'Do nothing for now — no buy, no sell.',
+					sprintf( 'Watch %s; a clearer signal may come later or tomorrow.', $inst ),
+					'Never force a trade just to be active.',
+				),
+			);
+		}
+
+		$is_buy   = ( 'BUY' === $direction );
+		$action   = $is_buy ? 'rising (bullish)' : 'falling (bearish)';
+		$opt_type = $is_buy ? 'a Call (CE) option' : 'a Put (PE) option';
+		$primary  = $strategy && ! empty( $strategy['primary'] ) ? $strategy['primary'] : ( $is_buy ? 'ATM Call' : 'ATM Put' );
+		$strike   = ( $strategy && ! empty( $strategy['legs'][0]['strike'] ) ) ? $strategy['legs'][0]['strike'] : '';
+
+		$enter_dir = $is_buy ? 'stays above' : 'stays below';
+		$enter_lvl = $is_buy ? number_format_i18n( $setup['entry_high'], 2 ) : number_format_i18n( $setup['entry_low'], 2 );
+
+		$text = sprintf(
+			'In plain English: %s looks %s today (about %d%% confidence). A possible plan — only if it %s ₹%s — is to buy %s%s. If you take the trade, put a stop-loss at ₹%s so a wrong call costs you only a small, fixed amount, and aim to take profits in steps near ₹%s, ₹%s and ₹%s. If price hits your stop-loss, exit at once — do not "hope" it comes back. If it never reaches your entry level, it is perfectly fine to skip the trade. Risk only money you can afford to lose.',
+			$inst,
+			$action,
+			$confidence,
+			$enter_dir,
+			$enter_lvl,
+			$opt_type,
+			$strike ? ' (e.g. ' . $strike . ')' : '',
+			number_format_i18n( $setup['stop_loss'], 2 ),
+			number_format_i18n( $setup['target1'], 2 ),
+			number_format_i18n( $setup['target2'], 2 ),
+			number_format_i18n( $setup['target3'], 2 )
+		);
+
+		return array(
+			'headline' => sprintf( '%s %s — %s setup (%d%%)', $direction, $inst, $primary, $confidence ),
+			'text'     => $text,
+			'steps'    => array(
+				sprintf( 'Enter only if %s %s ₹%s.', $inst, $enter_dir, $enter_lvl ),
+				sprintf( 'Buy: %s%s.', $primary, $strike ? ' — ' . $strike : '' ),
+				sprintf( 'Stop-loss: ₹%s (exit immediately if hit).', number_format_i18n( $setup['stop_loss'], 2 ) ),
+				sprintf( 'Book profits near ₹%s / ₹%s / ₹%s.', number_format_i18n( $setup['target1'], 2 ), number_format_i18n( $setup['target2'], 2 ), number_format_i18n( $setup['target3'], 2 ) ),
+				'Risk only what you can afford to lose; this is not advice.',
+			),
+		);
 	}
 
 	// ---------------------------------------------------------------------

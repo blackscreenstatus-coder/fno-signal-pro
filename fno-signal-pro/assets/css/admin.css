@@ -58,3 +58,7 @@
 
 .fnosp-tg-ok { color: #14794a; font-weight: 600; }
 .fnosp-tg-err { color: #b32424; font-weight: 600; }
+
+
+.fnosp-layman { background: #eefaf1; border-left: 4px solid #14794a; padding: 10px 14px; border-radius: 4px; }
+.fnosp-layman-head { font-weight: 700; margin-bottom: 4px; color: #14794a; }

@@ -151,6 +151,12 @@ class FnOSP_Telegram {
 			$lines[] = '<i>' . $e( $r['final_verdict'] ) . '</i>';
 		}
 
+		if ( ! empty( $r['layman_summary']['text'] ) ) {
+			$lines[] = '';
+			$lines[] = '📝 <b>In simple words</b>';
+			$lines[] = $e( $r['layman_summary']['text'] );
+		}
+
 		$lines[] = '';
 		$lines[] = '<i>Educational analysis, not investment advice. F&amp;O is high risk.</i>';
 		$lines[] = sprintf( '🕒 %s', $e( gmdate( 'Y-m-d H:i', time() ) . ' UTC' ) );

@@ -150,6 +150,26 @@
 		if ( data.final_verdict ) {
 			wrap.appendChild( el( 'div', 'fnosp-verdict', esc( data.final_verdict ) ) );
 		}
+
+		// Plain-language summary.
+		if ( data.layman_summary ) {
+			wrap.appendChild( el( 'div', 'fnosp-section-title', 'In Simple Words' ) );
+			var lay = el( 'div', 'fnosp-layman' );
+			if ( data.layman_summary.headline ) {
+				lay.appendChild( el( 'div', 'fnosp-layman-head', esc( data.layman_summary.headline ) ) );
+			}
+			if ( data.layman_summary.text ) {
+				lay.appendChild( el( 'div', '', esc( data.layman_summary.text ) ) );
+			}
+			if ( data.layman_summary.steps && data.layman_summary.steps.length ) {
+				var sl = el( 'ul', 'fnosp-list' );
+				data.layman_summary.steps.forEach( function ( st ) {
+					sl.appendChild( el( 'li', '', esc( st ) ) );
+				} );
+				lay.appendChild( sl );
+			}
+			wrap.appendChild( lay );
+		}
 		if ( data.ai && data.ai.narrative ) {
 			wrap.appendChild( el( 'div', 'fnosp-section-title', 'AI Commentary (' + esc( data.ai.model ) + ')' ) );
 			wrap.appendChild( el( 'div', 'fnosp-ai', esc( data.ai.narrative ) ) );

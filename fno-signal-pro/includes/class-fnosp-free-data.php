@@ -41,6 +41,12 @@ class FnOSP_Free_Data {
 			'FINNIFTY'   => 'NIFTY_FIN_SERVICE.NS',
 			'SENSEX'     => '^BSESN',
 			'MIDCPNIFTY' => '^NSEMDCP50',
+			// Common stock aliases -> Yahoo NSE symbols.
+			'INFY'         => 'INFY.NS',
+			'INFOSYS'      => 'INFY.NS',
+			'ACC'          => 'ACC.NS',
+			'SUZLON'       => 'SUZLON.NS',
+			'SUZLONENERGY' => 'SUZLON.NS',
 		);
 	}
 
@@ -620,6 +626,10 @@ class FnOSP_Free_Data {
 			'FINNIFTY'   => 'Nifty Financial Services India',
 			'SENSEX'     => 'Sensex stock market India',
 			'MIDCPNIFTY' => 'Nifty Midcap India',
+			'INFY'       => 'Infosys share price news',
+			'INFOSYS'    => 'Infosys share price news',
+			'ACC'        => 'ACC Ltd cement share price news',
+			'SUZLON'     => 'Suzlon Energy share price news',
 		);
 		if ( isset( $map[ strtoupper( $instrument ) ] ) ) {
 			return $map[ strtoupper( $instrument ) ];

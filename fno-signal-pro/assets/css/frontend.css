@@ -51,3 +51,7 @@
 .fnosp-w-ai { font-size: 13px; background: #fbf6ec; border-left: 3px solid #d8a33b; padding: 8px 12px; border-radius: 6px; margin-top: 8px; white-space: pre-wrap; }
 .fnosp-w-meta { font-size: 10px; color: #9aa1ad; margin-top: 10px; }
 .fnosp-w-disc { font-size: 10px; color: #9aa1ad; margin-top: 4px; }
+
+
+.fnosp-w-layman { font-size: 13px; background: #eefaf1; border-left: 3px solid #14794a; padding: 8px 12px; border-radius: 6px; margin-top: 8px; }
+.fnosp-w-layman-head { font-weight: 700; color: #14794a; margin-bottom: 3px; }
