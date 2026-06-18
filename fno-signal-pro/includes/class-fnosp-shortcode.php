@@ -71,6 +71,10 @@ class FnOSP_Shortcode {
 				'ai'         => '0',
 				'refresh'    => '0',
 				'title'      => '',
+				'strike'     => '',
+				'opt_type'   => 'CE',
+				'dte'        => '7',
+				'premium'    => '',
 			),
 			$atts,
 			'fno_signal'
@@ -83,6 +87,10 @@ class FnOSP_Shortcode {
 		$inst = esc_attr( strtoupper( $atts['instrument'] ) );
 		$ai   = ( '1' === (string) $atts['ai'] || 'true' === strtolower( (string) $atts['ai'] ) ) ? '1' : '0';
 		$ref  = absint( $atts['refresh'] );
+		$strike  = ( '' !== $atts['strike'] ) ? (float) $atts['strike'] : '';
+		$otype   = ( 'PE' === strtoupper( (string) $atts['opt_type'] ) ) ? 'PE' : 'CE';
+		$dte     = max( 1, absint( $atts['dte'] ) );
+		$premium = ( '' !== $atts['premium'] ) ? (float) $atts['premium'] : '';
 		$title = $atts['title'] ? esc_html( $atts['title'] ) : sprintf( 'F&O Signal · %s', $inst );
 
 		ob_start();
@@ -91,7 +99,11 @@ class FnOSP_Shortcode {
 			id="<?php echo esc_attr( $id ); ?>"
 			data-instrument="<?php echo $inst; ?>"
 			data-ai="<?php echo esc_attr( $ai ); ?>"
-			data-refresh="<?php echo esc_attr( $ref ); ?>">
+			data-refresh="<?php echo esc_attr( $ref ); ?>"
+			data-strike="<?php echo esc_attr( $strike ); ?>"
+			data-opt-type="<?php echo esc_attr( $otype ); ?>"
+			data-dte="<?php echo esc_attr( $dte ); ?>"
+			data-premium="<?php echo esc_attr( $premium ); ?>">
 			<div class="fnosp-widget-head">
 				<span class="fnosp-widget-title"><?php echo esc_html( $title ); ?></span>
 				<button type="button" class="fnosp-refresh-btn" aria-label="<?php esc_attr_e( 'Refresh', 'fno-signal-pro' ); ?>">&#x21bb;</button>

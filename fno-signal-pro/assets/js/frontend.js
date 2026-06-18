@@ -64,6 +64,21 @@
 			html += '</div>';
 		}
 
+		if ( data.option_plan ) {
+			var op = data.option_plan;
+			html += '<div class="fnosp-w-option">';
+			html += '<div class="fnosp-w-option-head">Option: ' + esc( op.label ) + ' (' + esc( op.moneyness ) + ', ' + esc( op.dte ) + 'd, IV ' + esc( op.iv_used ) + '%)</div>';
+			html += '<div>' + esc( op.buy_when.condition ) + '<br>Entry premium: ' + esc( op.buy_when.est_premium ) + ' (' + esc( op.premium_source || 'estimate' ) + ')</div>';
+			if ( op.sell_when && op.sell_when.targets ) {
+				var tg = op.sell_when.targets;
+				html += '<div class="fnosp-w-conf"><strong>Sell (premium):</strong> ₹' + esc( tg[0].premium ) + ' / ₹' + esc( tg[1].premium ) + ' / ₹' + esc( tg[2].premium ) + '</div>';
+			}
+			if ( op.sell_when && op.sell_when.stop_loss ) {
+				html += '<div><strong>Stop premium:</strong> ≈ ₹' + esc( op.sell_when.stop_loss.premium ) + '</div>';
+			}
+			html += '</div>';
+		}
+
 		if ( data.ai && data.ai.narrative ) {
 			html += '<div class="fnosp-w-ai">' + esc( data.ai.narrative ) + '</div>';
 		}
@@ -84,6 +99,17 @@
 		body.innerHTML = '<p class="fnosp-w-loading">' + esc( FNOSP_FRONT.i18n.loading ) + '</p>';
 
 		var url = FNOSP_FRONT.restUrl + '?instrument=' + encodeURIComponent( instrument ) + '&ai=' + encodeURIComponent( ai );
+
+		var strike = widget.getAttribute( 'data-strike' );
+		if ( strike && parseFloat( strike ) > 0 ) {
+			var ot = widget.getAttribute( 'data-opt-type' ) || 'CE';
+			var dte = widget.getAttribute( 'data-dte' ) || '7';
+			url += '&strike=' + encodeURIComponent( strike ) + '&opt_type=' + encodeURIComponent( ot ) + '&dte=' + encodeURIComponent( dte );
+			var prem = widget.getAttribute( 'data-premium' );
+			if ( prem && parseFloat( prem ) > 0 ) {
+				url += '&premium=' + encodeURIComponent( prem );
+			}
+		}
 
 		fetch( url, {
 			headers: { 'X-WP-Nonce': FNOSP_FRONT.nonce },

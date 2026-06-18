@@ -94,6 +94,8 @@ foreach ( $instruments as $sym ) {
 		<h2><?php esc_html_e( 'Shortcode & REST', 'fno-signal-pro' ); ?></h2>
 		<p><?php esc_html_e( 'Embed a live signal widget anywhere:', 'fno-signal-pro' ); ?></p>
 		<code>[fno_signal instrument="NIFTY" ai="0" refresh="0"]</code>
+		<p><?php esc_html_e( 'Or embed a specific option-strike buy/sell plan:', 'fno-signal-pro' ); ?></p>
+		<code>[fno_signal instrument="BANKNIFTY" strike="58000" opt_type="CE" dte="7" premium="540"]</code>
 		<p><?php esc_html_e( 'REST endpoint (auth required unless public access enabled):', 'fno-signal-pro' ); ?></p>
 		<code><?php echo esc_html( rest_url( 'fnosp/v1/signal?instrument=NIFTY&ai=0' ) ); ?></code>
 	</div>

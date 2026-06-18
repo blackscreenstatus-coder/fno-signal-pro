@@ -55,3 +55,7 @@
 
 .fnosp-w-layman { font-size: 13px; background: #eefaf1; border-left: 3px solid #14794a; padding: 8px 12px; border-radius: 6px; margin-top: 8px; }
 .fnosp-w-layman-head { font-weight: 700; color: #14794a; margin-bottom: 3px; }
+
+
+.fnosp-w-option { font-size: 13px; background: #f3f6fc; border-left: 3px solid #2563eb; padding: 8px 12px; border-radius: 6px; margin-top: 8px; }
+.fnosp-w-option-head { font-weight: 700; color: #1d3a73; margin-bottom: 3px; }
