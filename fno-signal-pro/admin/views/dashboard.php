@@ -73,6 +73,19 @@ foreach ( $instruments as $sym ) {
 		</button>
 	</div>
 
+	<div class="fnosp-controls">
+		<strong style="margin-right:6px;"><?php esc_html_e( 'Option plan (optional):', 'fno-signal-pro' ); ?></strong>
+		<label for="fnosp-strike"><?php esc_html_e( 'Strike', 'fno-signal-pro' ); ?></label>
+		<input type="number" id="fnosp-strike" step="1" placeholder="58000" style="width:110px;" />
+		<select id="fnosp-opt-type">
+			<option value="CE"><?php esc_html_e( 'CE (Call)', 'fno-signal-pro' ); ?></option>
+			<option value="PE"><?php esc_html_e( 'PE (Put)', 'fno-signal-pro' ); ?></option>
+		</select>
+		<label for="fnosp-dte"><?php esc_html_e( 'Days to expiry', 'fno-signal-pro' ); ?></label>
+		<input type="number" id="fnosp-dte" min="1" max="60" value="7" style="width:70px;" />
+		<span class="description"><?php esc_html_e( 'Leave strike blank for a plain signal.', 'fno-signal-pro' ); ?></span>
+	</div>
+
 	<div id="fnosp-result" class="fnosp-result" aria-live="polite"></div>
 
 	<div class="fnosp-help card">

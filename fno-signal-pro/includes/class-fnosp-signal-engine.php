@@ -125,6 +125,18 @@ class FnOSP_Signal_Engine {
 		// STEP 8: probability table.
 		$probabilities = $this->build_probability_table( $direction, $confidence, $setup, $snapshot );
 
+		// Optional: per-strike option plan (when a strike is requested).
+		$option_plan = null;
+		if ( ! empty( $opts['strike'] ) && (float) $opts['strike'] > 0 ) {
+			$option_plan = $this->build_option_plan(
+				$snapshot,
+				$direction,
+				(float) $opts['strike'],
+				isset( $opts['opt_type'] ) ? strtoupper( $opts['opt_type'] ) : 'CE',
+				isset( $opts['dte'] ) ? max( 1, (int) $opts['dte'] ) : 7
+			);
+		}
+
 		$result = array(
 			'instrument'    => $snapshot['instrument'],
 			'generated_at'  => gmdate( 'c', $snapshot['timestamp'] ),
@@ -149,6 +161,7 @@ class FnOSP_Signal_Engine {
 			'setup'         => $setup,
 			'option_strategy' => $strategy,
 			'probabilities' => $probabilities,
+			'option_plan'   => $option_plan,
 			'final_verdict' => $this->final_verdict( $direction, $snapshot, $net ),
 			'layman_summary' => $this->build_layman_summary( $direction, $snapshot, $setup, $strategy, $confidence, $this->trend_label( $net ) ),
 			'data_notes'    => isset( $snapshot['data_notes'] ) ? (array) $snapshot['data_notes'] : array(),
@@ -169,6 +182,112 @@ class FnOSP_Signal_Engine {
 		}
 
 		return $result;
+	}
+
+	// ---------------------------------------------------------------------
+	// Per-strike option plan: when to BUY this strike and when to SELL it.
+	// Premiums are Black-Scholes estimates (verify against the live chain).
+	// ---------------------------------------------------------------------
+	private function build_option_plan( $s, $direction, $strike, $type, $dte ) {
+		$type = ( 'PE' === $type ) ? 'PE' : 'CE';
+		$ltp  = (float) $s['ltp'];
+		$atr  = max( 0.0001, (float) $s['atr'] );
+		$iv   = ( (float) $s['iv'] > 0 ? (float) $s['iv'] : 14.0 ) / 100; // decimal.
+		$r    = 0.065;
+		$t    = $dte / 365;
+
+		$price_at = function ( $spot ) use ( $type, $strike, $t, $r, $iv ) {
+			return FnOSP_Indicators::bs_price( $type, $spot, $strike, $t, $r, $iv );
+		};
+
+		$is_call   = ( 'CE' === $type );
+		$delta     = FnOSP_Indicators::bs_delta( $type, $ltp, $strike, $t, $r, $iv );
+		$prem_now  = $price_at( $ltp );
+
+		// Directional spot levels for THIS option type (CE profits when spot rises; PE when it falls).
+		if ( $is_call ) {
+			$entry_lo = round( $ltp - 0.15 * $atr, 2 );
+			$entry_hi = round( $ltp + 0.15 * $atr, 2 );
+			$sl_spot  = round( $ltp - 1.2 * $atr, 2 );
+			$t1_spot  = round( $ltp + 1.0 * $atr, 2 );
+			$t2_spot  = round( $ltp + 2.0 * $atr, 2 );
+			$t3_spot  = round( $ltp + 3.2 * $atr, 2 );
+			$trigger  = sprintf( 'underlying rises and holds above %s', number_format_i18n( $entry_hi, 2 ) );
+			$invalid  = sprintf( 'underlying falls below %s', number_format_i18n( $sl_spot, 2 ) );
+		} else {
+			$entry_lo = round( $ltp - 0.15 * $atr, 2 );
+			$entry_hi = round( $ltp + 0.15 * $atr, 2 );
+			$sl_spot  = round( $ltp + 1.2 * $atr, 2 );
+			$t1_spot  = round( $ltp - 1.0 * $atr, 2 );
+			$t2_spot  = round( $ltp - 2.0 * $atr, 2 );
+			$t3_spot  = round( $ltp - 3.2 * $atr, 2 );
+			$trigger  = sprintf( 'underlying falls and holds below %s', number_format_i18n( $entry_lo, 2 ) );
+			$invalid  = sprintf( 'underlying rises above %s', number_format_i18n( $sl_spot, 2 ) );
+		}
+
+		// Premium levels (entry / targets / stop) for the option itself.
+		$prem_entry = $prem_now;
+		$prem_t1    = $price_at( $t1_spot );
+		$prem_t2    = $price_at( $t2_spot );
+		$prem_t3    = $price_at( $t3_spot );
+		$prem_sl    = $price_at( $sl_spot );
+
+		// Alignment with the engine's directional signal.
+		$aligned = ( $is_call && 'BUY' === $direction ) || ( ! $is_call && 'SELL' === $direction );
+		if ( 'NO TRADE' === $direction ) {
+			$align_note = 'The model has no high-confidence directional signal now, so treat this as a watch-only plan and wait for the trigger.';
+		} elseif ( $aligned ) {
+			$align_note = sprintf( 'This %s is aligned with the current %s signal (%s) — the higher-probability side.', $type, $direction, $s['instrument'] );
+		} else {
+			$align_note = sprintf( 'Caution: a %s is counter to the current %s signal. This is a contrarian bet — smaller size, tighter stop.', $type, $direction );
+		}
+
+		$moneyness = $is_call
+			? ( $ltp > $strike ? 'ITM' : ( abs( $ltp - $strike ) < ( 0.25 * $atr ) ? 'ATM' : 'OTM' ) )
+			: ( $ltp < $strike ? 'ITM' : ( abs( $ltp - $strike ) < ( 0.25 * $atr ) ? 'ATM' : 'OTM' ) );
+
+		return array(
+			'strike'        => $strike,
+			'type'          => $type,
+			'label'         => number_format_i18n( $strike, 0 ) . ' ' . $type,
+			'dte'           => $dte,
+			'iv_used'       => round( $iv * 100, 1 ),
+			'moneyness'     => $moneyness,
+			'delta'         => $delta,
+			'premium_now'   => $prem_now,
+			'aligned'       => $aligned,
+			'align_note'    => $align_note,
+
+			'buy_when'      => array(
+				'condition'   => sprintf( 'BUY when %s.', $trigger ),
+				'entry_zone'  => '₹' . number_format_i18n( $entry_lo, 2 ) . ' – ₹' . number_format_i18n( $entry_hi, 2 ) . ' (underlying)',
+				'est_premium' => '≈ ₹' . number_format_i18n( $prem_entry, 2 ) . ' per lot-unit',
+				'avoid'       => array(
+					'Avoid buying in the last ~30 min if trading intraday (theta + low liquidity).',
+					( $iv * 100 >= 22 ) ? sprintf( 'IV is high (%.0f%%) — premium is expensive; prefer a spread over a naked buy.', $iv * 100 ) : 'IV is reasonable for a naked buy.',
+				),
+			),
+
+			'sell_when'     => array(
+				'targets'   => array(
+					array( 'spot' => $t1_spot, 'premium' => $prem_t1, 'note' => 'book ~1/3' ),
+					array( 'spot' => $t2_spot, 'premium' => $prem_t2, 'note' => 'book ~1/3' ),
+					array( 'spot' => $t3_spot, 'premium' => $prem_t3, 'note' => 'trail the rest' ),
+				),
+				'stop_loss' => array(
+					'spot'    => $sl_spot,
+					'premium' => $prem_sl,
+					'note'    => sprintf( 'Exit immediately if %s, or if premium falls to ≈ ₹%s.', $invalid, number_format_i18n( $prem_sl, 2 ) ),
+				),
+				'time_exit' => 'Square off intraday by ~3:15 PM; for positional, exit 1–2 days before expiry to dodge fast theta decay.',
+			),
+
+			'notes'         => array(
+				$align_note,
+				'Premiums are Black-Scholes estimates from spot, strike, ' . round( $iv * 100, 1 ) . '% IV and ' . $dte . ' days to expiry — verify against the live option chain before trading.',
+				'Decision-support only, not financial advice.',
+			),
+		);
 	}
 
 	// ---------------------------------------------------------------------

@@ -298,4 +298,67 @@ class FnOSP_Indicators {
 		}
 		return round( $pv / $vol, 2 );
 	}
+
+	/**
+	 * Standard normal CDF (Abramowitz-Stegun approximation).
+	 *
+	 * @param float $x Value.
+	 * @return float
+	 */
+	public static function norm_cdf( $x ) {
+		// erf approximation.
+		$sign = $x < 0 ? -1 : 1;
+		$ax   = abs( $x ) / sqrt( 2 );
+		$t    = 1 / ( 1 + 0.3275911 * $ax );
+		$y    = 1 - ( ( ( ( ( 1.061405429 * $t - 1.453152027 ) * $t ) + 1.421413741 ) * $t - 0.284496736 ) * $t + 0.254829592 ) * $t * exp( -$ax * $ax );
+		$erf  = $sign * $y;
+		return 0.5 * ( 1 + $erf );
+	}
+
+	/**
+	 * Black-Scholes European option price.
+	 *
+	 * @param string $type  'CE' (call) or 'PE' (put).
+	 * @param float  $s     Spot.
+	 * @param float  $k     Strike.
+	 * @param float  $t     Time to expiry in years.
+	 * @param float  $r     Risk-free rate (annual, decimal).
+	 * @param float  $sigma Implied volatility (annual, decimal).
+	 * @return float Theoretical premium (>= 0).
+	 */
+	public static function bs_price( $type, $s, $k, $t, $r, $sigma ) {
+		$t     = max( $t, 1 / 3650 );      // Floor to avoid div-by-zero.
+		$sigma = max( $sigma, 0.0001 );
+		$sqrt  = $sigma * sqrt( $t );
+		$d1    = ( log( $s / $k ) + ( $r + $sigma * $sigma / 2 ) * $t ) / $sqrt;
+		$d2    = $d1 - $sqrt;
+		$disc  = exp( -$r * $t );
+
+		if ( 'PE' === strtoupper( $type ) ) {
+			$price = $k * $disc * self::norm_cdf( -$d2 ) - $s * self::norm_cdf( -$d1 );
+		} else {
+			$price = $s * self::norm_cdf( $d1 ) - $k * $disc * self::norm_cdf( $d2 );
+		}
+		return max( 0.05, round( $price, 2 ) );
+	}
+
+	/**
+	 * Black-Scholes delta.
+	 *
+	 * @param string $type  CE/PE.
+	 * @param float  $s     Spot.
+	 * @param float  $k     Strike.
+	 * @param float  $t     Years to expiry.
+	 * @param float  $r     Rate.
+	 * @param float  $sigma IV (decimal).
+	 * @return float
+	 */
+	public static function bs_delta( $type, $s, $k, $t, $r, $sigma ) {
+		$t     = max( $t, 1 / 3650 );
+		$sigma = max( $sigma, 0.0001 );
+		$d1    = ( log( $s / $k ) + ( $r + $sigma * $sigma / 2 ) * $t ) / ( $sigma * sqrt( $t ) );
+		$call  = self::norm_cdf( $d1 );
+		return 'PE' === strtoupper( $type ) ? round( $call - 1, 3 ) : round( $call, 3 );
+	}
 }
+

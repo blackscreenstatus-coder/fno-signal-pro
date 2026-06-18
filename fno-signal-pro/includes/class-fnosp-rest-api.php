@@ -52,6 +52,19 @@ class FnOSP_Rest_Api {
 						'required' => false,
 						'default'  => false,
 					),
+					'strike'     => array(
+						'type'     => 'number',
+						'required' => false,
+					),
+					'opt_type'   => array(
+						'type'              => 'string',
+						'required'          => false,
+						'sanitize_callback' => 'sanitize_text_field',
+					),
+					'dte'        => array(
+						'type'     => 'integer',
+						'required' => false,
+					),
 				),
 			)
 		);
@@ -168,7 +181,14 @@ class FnOSP_Rest_Api {
 		$use_ai  = (bool) $req->get_param( 'ai' ) && $this->settings->ai_ready();
 		$nocache = (bool) $req->get_param( 'nocache' );
 
-		$cache_key = FnOSP_Cache::key( $instrument, $use_ai );
+		// Optional per-strike option plan.
+		$strike   = $req->get_param( 'strike' );
+		$opt_type = $req->get_param( 'opt_type' );
+		$dte      = $req->get_param( 'dte' );
+		$has_opt  = ! empty( $strike ) && (float) $strike > 0;
+
+		$opt_suffix = $has_opt ? ( '|' . (float) $strike . ( $opt_type ? strtoupper( $opt_type ) : 'CE' ) . '|' . (int) $dte ) : '';
+		$cache_key = FnOSP_Cache::key( $instrument . $opt_suffix, $use_ai );
 		$ttl       = (int) $this->settings->get( 'cache_ttl', 60 );
 
 		if ( ! $nocache && $ttl > 0 ) {
@@ -179,8 +199,14 @@ class FnOSP_Rest_Api {
 			}
 		}
 
-		$engine = FnOSP_Plugin::make_engine();
-		$result = $engine->generate( $instrument, array( 'use_ai' => $use_ai ) );
+		$engine   = FnOSP_Plugin::make_engine();
+		$gen_opts = array( 'use_ai' => $use_ai );
+		if ( $has_opt ) {
+			$gen_opts['strike']   = (float) $strike;
+			$gen_opts['opt_type'] = $opt_type ? strtoupper( $opt_type ) : 'CE';
+			$gen_opts['dte']      = $dte ? max( 1, (int) $dte ) : 7;
+		}
+		$result = $engine->generate( $instrument, $gen_opts );
 
 		if ( is_wp_error( $result ) ) {
 			return new WP_Error(

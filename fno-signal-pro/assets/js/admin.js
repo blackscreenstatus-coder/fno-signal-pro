@@ -177,6 +177,39 @@
 			wrap.appendChild( el( 'div', 'fnosp-error', 'AI: ' + esc( data.ai.error ) ) );
 		}
 
+		// Per-strike option plan.
+		if ( data.option_plan ) {
+			var op = data.option_plan;
+			wrap.appendChild( el( 'div', 'fnosp-section-title', 'Option Plan — ' + esc( op.label ) + ' (' + esc( op.moneyness ) + ', ' + esc( op.dte ) + 'd, IV ' + esc( op.iv_used ) + '%)' ) );
+			var box = el( 'div', 'fnosp-layman' );
+
+			box.appendChild( el( 'div', '', '<strong>Now:</strong> est. premium ≈ ₹' + esc( op.premium_now ) + ' · delta ' + esc( op.delta ) + ( op.aligned ? ' · <span style="color:#14794a">aligned with signal</span>' : ' · <span style="color:#b32424">counter-trend</span>' ) ) );
+
+			if ( op.buy_when ) {
+				box.appendChild( el( 'div', 'fnosp-layman-head', 'When to BUY' ) );
+				box.appendChild( el( 'div', '', esc( op.buy_when.condition ) + '<br>Entry zone: ' + esc( op.buy_when.entry_zone ) + '<br>Est. buy premium: ' + esc( op.buy_when.est_premium ) ) );
+			}
+
+			if ( op.sell_when ) {
+				box.appendChild( el( 'div', 'fnosp-layman-head', 'When to SELL' ) );
+				var st = el( 'table', 'fnosp-scores' );
+				st.innerHTML = '<tr><th>Target (underlying)</th><th>Est. premium</th><th></th></tr>';
+				op.sell_when.targets.forEach( function ( tg ) {
+					var row = el( 'tr' );
+					row.innerHTML = '<td>' + esc( tg.spot ) + '</td><td>₹' + esc( tg.premium ) + '</td><td>' + esc( tg.note ) + '</td>';
+					st.appendChild( row );
+				} );
+				box.appendChild( st );
+				if ( op.sell_when.stop_loss ) {
+					box.appendChild( el( 'div', '', '<strong>Stop:</strong> ' + esc( op.sell_when.stop_loss.note ) ) );
+				}
+				if ( op.sell_when.time_exit ) {
+					box.appendChild( el( 'div', '', '<strong>Time exit:</strong> ' + esc( op.sell_when.time_exit ) ) );
+				}
+			}
+			wrap.appendChild( box );
+		}
+
 		// Data coverage notes (free provider transparency).
 		if ( data.data_notes && data.data_notes.length ) {
 			wrap.appendChild( el( 'div', 'fnosp-section-title', 'Data Coverage' ) );
@@ -206,6 +239,15 @@
 		var url = FNOSP_ADMIN.restUrl +
 			'?instrument=' + encodeURIComponent( instrument ) +
 			'&ai=' + useAi + '&nocache=' + nocache;
+
+		// Optional per-strike option plan.
+		var strikeEl = document.getElementById( 'fnosp-strike' );
+		var strike = strikeEl ? strikeEl.value : '';
+		if ( strike && parseFloat( strike ) > 0 ) {
+			var ot = document.getElementById( 'fnosp-opt-type' ).value;
+			var dte = document.getElementById( 'fnosp-dte' ).value || 7;
+			url += '&strike=' + encodeURIComponent( strike ) + '&opt_type=' + encodeURIComponent( ot ) + '&dte=' + encodeURIComponent( dte );
+		}
 
 		fetch( url, {
 			headers: { 'X-WP-Nonce': FNOSP_ADMIN.nonce },
