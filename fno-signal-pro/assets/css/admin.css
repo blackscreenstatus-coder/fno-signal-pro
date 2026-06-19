@@ -66,3 +66,8 @@
 
 .fnosp-expert { margin-top: 14px; background: #11203f; color: #eaf0fb; padding: 14px 16px; border-radius: 10px; }
 .fnosp-expert-head { font-weight: 700; font-size: 14px; margin-bottom: 6px; color: #ffd97a; }
+
+
+.fnosp-chart-wrap { background: #fff; border: 1px solid #dcdcde; border-radius: 10px; padding: 14px 16px; margin: 14px 0; }
+.fnosp-chart-title { font-weight: 700; font-size: 14px; margin-bottom: 8px; color: #1d2327; }
+#fnosp-tvchart { height: 460px; width: 100%; }

@@ -60,6 +60,8 @@ class FnOSP_Settings {
 			// Frontend.
 			'show_disclaimer'    => 1,
 			'allow_public_rest'  => 0, // If 1, REST endpoint is public (rate-limited).
+			'show_chart'         => 1, // Live TradingView chart on the dashboard.
+			'chart_theme'        => 'light',
 
 			// Telegram alerts.
 			'telegram_enabled'         => 0,
@@ -175,6 +177,8 @@ class FnOSP_Settings {
 
 		$out['show_disclaimer']   = empty( $input['show_disclaimer'] ) ? 0 : 1;
 		$out['allow_public_rest'] = empty( $input['allow_public_rest'] ) ? 0 : 1;
+		$out['show_chart']        = empty( $input['show_chart'] ) ? 0 : 1;
+		$out['chart_theme']       = ( 'dark' === ( $input['chart_theme'] ?? '' ) ) ? 'dark' : 'light';
 
 		// Telegram alerts.
 		$out['telegram_enabled']  = empty( $input['telegram_enabled'] ) ? 0 : 1;

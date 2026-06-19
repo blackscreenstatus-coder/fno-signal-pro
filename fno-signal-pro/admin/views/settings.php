@@ -166,6 +166,17 @@ $instruments_csv = implode( ', ', (array) $values['instruments'] );
 				<td><label><input type="checkbox" name="fnosp[show_disclaimer]" value="1" <?php checked( $values['show_disclaimer'], 1 ); ?> /> <?php esc_html_e( 'Display the risk disclaimer on the frontend widget (recommended)', 'fno-signal-pro' ); ?></label></td>
 			</tr>
 			<tr>
+				<th scope="row"><?php esc_html_e( 'Live chart', 'fno-signal-pro' ); ?></th>
+				<td>
+					<label><input type="checkbox" name="fnosp[show_chart]" value="1" <?php checked( $values['show_chart'], 1 ); ?> /> <?php esc_html_e( 'Show the live TradingView chart on the dashboard', 'fno-signal-pro' ); ?></label>
+					&nbsp;&nbsp;<?php esc_html_e( 'Theme:', 'fno-signal-pro' ); ?>
+					<select name="fnosp[chart_theme]">
+						<option value="light" <?php selected( $values['chart_theme'], 'light' ); ?>><?php esc_html_e( 'Light', 'fno-signal-pro' ); ?></option>
+						<option value="dark" <?php selected( $values['chart_theme'], 'dark' ); ?>><?php esc_html_e( 'Dark', 'fno-signal-pro' ); ?></option>
+					</select>
+				</td>
+			</tr>
+			<tr>
 				<th scope="row"><?php esc_html_e( 'Public REST access', 'fno-signal-pro' ); ?></th>
 				<td><label><input type="checkbox" name="fnosp[allow_public_rest]" value="1" <?php checked( $values['allow_public_rest'], 1 ); ?> /> <?php esc_html_e( 'Allow logged-out visitors to fetch signals (needed for public-page widgets)', 'fno-signal-pro' ); ?></label></td>
 			</tr>

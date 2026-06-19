@@ -235,6 +235,45 @@
 		return wrap;
 	}
 
+	function tvSymbol( sym ) {
+		var m = {
+			NIFTY: 'NSE:NIFTY',
+			NIFTY50: 'NSE:NIFTY',
+			BANKNIFTY: 'NSE:BANKNIFTY',
+			FINNIFTY: 'NSE:CNXFINANCE',
+			MIDCPNIFTY: 'NSE:NIFTYMIDSELECT',
+			SENSEX: 'BSE:SENSEX'
+		};
+		sym = ( sym || '' ).toUpperCase();
+		if ( m[ sym ] ) { return m[ sym ]; }
+		if ( sym.indexOf( ':' ) !== -1 ) { return sym; }
+		return 'NSE:' + sym;
+	}
+
+	var fnospTvWidget = null;
+	function renderChart( sym ) {
+		var holder = document.getElementById( 'fnosp-tvchart' );
+		if ( ! holder || typeof TradingView === 'undefined' ) { return; }
+		holder.innerHTML = '';
+		try {
+			fnospTvWidget = new TradingView.widget( {
+				autosize: true,
+				symbol: tvSymbol( sym ),
+				interval: '15',
+				timezone: 'Asia/Kolkata',
+				theme: ( FNOSP_ADMIN.chartTheme === 'dark' ? 'dark' : 'light' ),
+				style: '1',
+				locale: 'en',
+				container_id: 'fnosp-tvchart',
+				hide_side_toolbar: false,
+				allow_symbol_change: true,
+				studies: [ 'STD;EMA', 'RSI@tv-basicstudies' ]
+			} );
+		} catch ( e ) {
+			holder.innerHTML = '<p class="fnosp-error">Chart could not load.</p>';
+		}
+	}
+
 	function fetchSignal() {
 		var instrument = document.getElementById( 'fnosp-instrument' ).value;
 		var useAi = document.getElementById( 'fnosp-use-ai' ).checked ? 1 : 0;
@@ -291,6 +330,13 @@
 		var btn = document.getElementById( 'fnosp-generate' );
 		if ( btn ) {
 			btn.addEventListener( 'click', fetchSignal );
+		}
+
+		// Live chart: render on load and when the instrument changes.
+		var instEl = document.getElementById( 'fnosp-instrument' );
+		if ( document.getElementById( 'fnosp-tvchart' ) && instEl ) {
+			renderChart( instEl.value );
+			instEl.addEventListener( 'change', function () { renderChart( instEl.value ); } );
 		}
 
 		// Auto-fill days-to-expiry when an expiry date is chosen.

@@ -102,10 +102,13 @@ class FnOSP_Admin {
 			FNOSP_VERSION
 		);
 
+		// Live chart library (TradingView free embed). No API key required.
+		wp_enqueue_script( 'fnosp-tradingview', 'https://s3.tradingview.com/tv.js', array(), null, true ); // phpcs:ignore WordPress.WP.EnqueuedResourceParameters.MissingVersion
+
 		wp_enqueue_script(
 			'fnosp-admin',
 			FNOSP_PLUGIN_URL . 'assets/js/admin.js',
-			array(),
+			array( 'fnosp-tradingview' ),
 			FNOSP_VERSION,
 			true
 		);
@@ -120,6 +123,8 @@ class FnOSP_Admin {
 				'emailTestUrl' => esc_url_raw( rest_url( 'fnosp/v1/email-test' ) ),
 				'nonce'    => wp_create_nonce( 'wp_rest' ),
 				'aiReady'  => $this->settings->ai_ready(),
+				'chartTheme' => $this->settings->get( 'chart_theme', 'light' ),
+				'showChart'  => (int) $this->settings->get( 'show_chart', 1 ),
 				'i18n'     => array(
 					'loading' => __( 'Analyzing market data...', 'fno-signal-pro' ),
 					'error'   => __( 'Failed to generate signal.', 'fno-signal-pro' ),

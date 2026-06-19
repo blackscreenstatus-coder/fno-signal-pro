@@ -63,3 +63,6 @@
 
 .fnosp-w-expert { margin-top: 10px; background: #11203f; color: #eaf0fb; padding: 10px 12px; border-radius: 8px; font-size: 13px; }
 .fnosp-w-expert-head { font-weight: 700; color: #ffd97a; margin-bottom: 4px; }
+
+
+.fnosp-w-chart { height: 320px; width: 100%; border-bottom: 1px solid #eef0f3; }

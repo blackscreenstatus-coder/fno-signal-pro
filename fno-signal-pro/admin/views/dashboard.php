@@ -99,6 +99,14 @@ foreach ( $instruments as $sym ) {
 
 	<div id="fnosp-result" class="fnosp-result" aria-live="polite"></div>
 
+	<?php if ( (int) $settings->get( 'show_chart', 1 ) === 1 ) : ?>
+	<div class="fnosp-chart-wrap">
+		<div class="fnosp-chart-title"><?php esc_html_e( 'Live Chart', 'fno-signal-pro' ); ?></div>
+		<div id="fnosp-tvchart"></div>
+		<p class="description"><?php esc_html_e( 'Live chart by TradingView. Data may be delayed depending on exchange/feed. You can change symbol & timeframe directly on the chart.', 'fno-signal-pro' ); ?></p>
+	</div>
+	<?php endif; ?>
+
 	<div class="fnosp-help card">
 		<h2><?php esc_html_e( 'Shortcode & REST', 'fno-signal-pro' ); ?></h2>
 		<p><?php esc_html_e( 'Embed a live signal widget anywhere:', 'fno-signal-pro' ); ?></p>

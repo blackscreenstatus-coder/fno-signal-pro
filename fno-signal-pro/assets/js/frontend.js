@@ -132,7 +132,36 @@
 			} );
 	}
 
+	function tvSymbol( sym ) {
+		var m = { NIFTY: 'NSE:NIFTY', NIFTY50: 'NSE:NIFTY', BANKNIFTY: 'NSE:BANKNIFTY', FINNIFTY: 'NSE:CNXFINANCE', MIDCPNIFTY: 'NSE:NIFTYMIDSELECT', SENSEX: 'BSE:SENSEX' };
+		sym = ( sym || '' ).toUpperCase();
+		if ( m[ sym ] ) { return m[ sym ]; }
+		if ( sym.indexOf( ':' ) !== -1 ) { return sym; }
+		return 'NSE:' + sym;
+	}
+
+	function initChart( widget ) {
+		if ( widget.getAttribute( 'data-chart' ) !== '1' || typeof TradingView === 'undefined' ) { return; }
+		var holder = widget.querySelector( '.fnosp-w-chart' );
+		if ( ! holder ) { return; }
+		try {
+			new TradingView.widget( {
+				autosize: true,
+				symbol: tvSymbol( widget.getAttribute( 'data-instrument' ) ),
+				interval: '15',
+				timezone: 'Asia/Kolkata',
+				theme: ( widget.getAttribute( 'data-theme' ) === 'dark' ? 'dark' : 'light' ),
+				style: '1',
+				locale: 'en',
+				container_id: holder.id,
+				hide_side_toolbar: true,
+				allow_symbol_change: true
+			} );
+		} catch ( e ) {}
+	}
+
 	function init( widget ) {
+		initChart( widget );
 		load( widget );
 
 		var btn = widget.querySelector( '.fnosp-refresh-btn' );

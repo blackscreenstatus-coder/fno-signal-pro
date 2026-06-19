@@ -43,6 +43,7 @@ class FnOSP_Shortcode {
 			FNOSP_VERSION,
 			true
 		);
+		wp_register_script( 'fnosp-tradingview', 'https://s3.tradingview.com/tv.js', array(), null, true ); // phpcs:ignore WordPress.WP.EnqueuedResourceParameters.MissingVersion
 		wp_localize_script(
 			'fnosp-frontend',
 			'FNOSP_FRONT',
@@ -75,6 +76,7 @@ class FnOSP_Shortcode {
 				'opt_type'   => 'CE',
 				'dte'        => '7',
 				'premium'    => '',
+				'chart'      => '0',
 			),
 			$atts,
 			'fno_signal'
@@ -82,6 +84,10 @@ class FnOSP_Shortcode {
 
 		wp_enqueue_style( 'fnosp-frontend' );
 		wp_enqueue_script( 'fnosp-frontend' );
+		$want_chart = ( '1' === (string) $atts['chart'] || 'true' === strtolower( (string) $atts['chart'] ) );
+		if ( $want_chart ) {
+			wp_enqueue_script( 'fnosp-tradingview' );
+		}
 
 		$id   = 'fnosp-widget-' . wp_rand( 1000, 9999 );
 		$inst = esc_attr( strtoupper( $atts['instrument'] ) );
@@ -103,11 +109,16 @@ class FnOSP_Shortcode {
 			data-strike="<?php echo esc_attr( $strike ); ?>"
 			data-opt-type="<?php echo esc_attr( $otype ); ?>"
 			data-dte="<?php echo esc_attr( $dte ); ?>"
-			data-premium="<?php echo esc_attr( $premium ); ?>">
+			data-premium="<?php echo esc_attr( $premium ); ?>"
+			data-chart="<?php echo $want_chart ? '1' : '0'; ?>"
+			data-theme="<?php echo esc_attr( $this->settings->get( 'chart_theme', 'light' ) ); ?>">
 			<div class="fnosp-widget-head">
 				<span class="fnosp-widget-title"><?php echo esc_html( $title ); ?></span>
 				<button type="button" class="fnosp-refresh-btn" aria-label="<?php esc_attr_e( 'Refresh', 'fno-signal-pro' ); ?>">&#x21bb;</button>
 			</div>
+			<?php if ( $want_chart ) : ?>
+			<div class="fnosp-w-chart" id="<?php echo esc_attr( $id ); ?>-chart"></div>
+			<?php endif; ?>
 			<div class="fnosp-widget-body">
 				<p class="fnosp-w-loading"><?php esc_html_e( 'Loading signal...', 'fno-signal-pro' ); ?></p>
 			</div>
