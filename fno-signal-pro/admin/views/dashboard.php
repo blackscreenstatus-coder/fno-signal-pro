@@ -1,6 +1,6 @@
 <?php
 /**
- * Admin dashboard view.
+ * Admin dashboard — simplified, auto-refreshing, no manual inputs needed.
  *
  * @package FnO_Signal_Pro
  * @var FnOSP_Settings $settings
@@ -13,11 +13,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 $instruments = (array) $settings->get( 'instruments', array() );
 $default     = $settings->get( 'default_instrument', 'NIFTY' );
 $ai_ready    = $settings->ai_ready();
-
-// Split instruments into Indices vs Stocks for clearer sections.
-$index_set  = array( 'NIFTY', 'NIFTY50', 'BANKNIFTY', 'FINNIFTY', 'SENSEX', 'MIDCPNIFTY' );
-$idx_list   = array();
-$stock_list = array();
+$index_set   = array( 'NIFTY', 'NIFTY50', 'BANKNIFTY', 'FINNIFTY', 'SENSEX', 'MIDCPNIFTY' );
+$idx_list    = array();
+$stock_list  = array();
 foreach ( $instruments as $sym ) {
 	if ( in_array( strtoupper( $sym ), $index_set, true ) ) {
 		$idx_list[] = $sym;
@@ -29,15 +27,12 @@ foreach ( $instruments as $sym ) {
 <div class="wrap fnosp-wrap">
 	<h1 class="fnosp-title">
 		<span class="dashicons dashicons-chart-line"></span>
-		<?php esc_html_e( 'F&O Signal Pro — Dashboard', 'fno-signal-pro' ); ?>
+		<?php esc_html_e( 'F&O Signal Pro', 'fno-signal-pro' ); ?>
+		<span class="fnosp-live-dot" id="fnosp-live-dot" title="Auto-refreshing every 5s"></span>
 	</h1>
 
-	<p class="fnosp-sub">
-		<?php esc_html_e( 'Generate an institutional-grade signal using the 100-point framework. Output is decision-support only — not financial advice.', 'fno-signal-pro' ); ?>
-	</p>
-
 	<div class="fnosp-controls">
-		<label for="fnosp-instrument"><?php esc_html_e( 'Instrument', 'fno-signal-pro' ); ?></label>
+		<label for="fnosp-instrument"><?php esc_html_e( 'Index / Stock', 'fno-signal-pro' ); ?></label>
 		<select id="fnosp-instrument">
 			<?php if ( ! empty( $idx_list ) ) : ?>
 				<optgroup label="<?php esc_attr_e( 'Indices', 'fno-signal-pro' ); ?>">
@@ -55,65 +50,37 @@ foreach ( $instruments as $sym ) {
 			<?php endif; ?>
 		</select>
 
-		<label class="fnosp-ai-toggle <?php echo $ai_ready ? '' : 'fnosp-disabled'; ?>">
-			<input type="checkbox" id="fnosp-use-ai" <?php disabled( ! $ai_ready ); ?> />
-			<?php esc_html_e( 'AI commentary', 'fno-signal-pro' ); ?>
-			<?php if ( ! $ai_ready ) : ?>
-				<small>(<?php esc_html_e( 'configure API key in Settings', 'fno-signal-pro' ); ?>)</small>
-			<?php endif; ?>
-		</label>
+		<span class="fnosp-or"><?php esc_html_e( 'or search:', 'fno-signal-pro' ); ?></span>
+		<input type="text" id="fnosp-search" placeholder="<?php esc_attr_e( 'Type any NSE ticker (e.g. TATASTEEL)', 'fno-signal-pro' ); ?>" style="width:220px;" />
+		<button class="button button-small" id="fnosp-search-go"><?php esc_html_e( 'Go', 'fno-signal-pro' ); ?></button>
 
-		<label class="fnosp-ai-toggle">
-			<input type="checkbox" id="fnosp-nocache" />
-			<?php esc_html_e( 'Force refresh', 'fno-signal-pro' ); ?>
-		</label>
-
-		<button class="button button-primary" id="fnosp-generate">
-			<?php esc_html_e( 'Generate Signal', 'fno-signal-pro' ); ?>
-		</button>
+		<span class="fnosp-refresh-info" id="fnosp-refresh-info"><?php esc_html_e( 'Auto-refresh: 5s', 'fno-signal-pro' ); ?></span>
 	</div>
 
-	<div class="fnosp-controls">
-		<strong style="margin-right:6px;"><?php esc_html_e( 'Option plan (optional):', 'fno-signal-pro' ); ?></strong>
-		<label for="fnosp-strike"><?php esc_html_e( 'Strike', 'fno-signal-pro' ); ?></label>
-		<input type="number" id="fnosp-strike" step="1" placeholder="58000" style="width:110px;" />
-		<select id="fnosp-opt-type">
-			<option value="CE"><?php esc_html_e( 'CE (Call)', 'fno-signal-pro' ); ?></option>
-			<option value="PE"><?php esc_html_e( 'PE (Put)', 'fno-signal-pro' ); ?></option>
-		</select>
-		<label for="fnosp-expiry"><?php esc_html_e( 'Expiry date', 'fno-signal-pro' ); ?></label>
-		<input type="date" id="fnosp-expiry" style="width:150px;" />
-		<input type="number" id="fnosp-dte" min="1" max="60" value="7" style="width:64px;" title="<?php esc_attr_e( 'Days to expiry (auto-filled from expiry date)', 'fno-signal-pro' ); ?>" />
-		<label for="fnosp-premium"><?php esc_html_e( 'Live premium ₹', 'fno-signal-pro' ); ?></label>
-		<input type="number" id="fnosp-premium" step="0.05" placeholder="optional" style="width:100px;" />
-		<span class="description"><?php esc_html_e( 'Enter your real option price for accurate targets; leave blank to use the model estimate.', 'fno-signal-pro' ); ?></span>
+	<!-- Signal output (auto-populated) -->
+	<div id="fnosp-result" class="fnosp-result" aria-live="polite">
+		<p class="fnosp-loading"><?php esc_html_e( 'Loading signal...', 'fno-signal-pro' ); ?></p>
 	</div>
 
-	<div class="fnosp-controls">
-		<strong style="margin-right:6px;"><?php esc_html_e( 'Stock scanner:', 'fno-signal-pro' ); ?></strong>
-		<button class="button button-secondary" id="fnosp-scan"><?php esc_html_e( "Today's Top Picks (Buy / Sell)", 'fno-signal-pro' ); ?></button>
-		<span class="description"><?php esc_html_e( 'Ranks your scan universe and lists the strongest buy/sell candidates. First run may take ~20–40s.', 'fno-signal-pro' ); ?></span>
-	</div>
-
-	<div id="fnosp-scan-result" class="fnosp-result" aria-live="polite"></div>
-
-	<div id="fnosp-result" class="fnosp-result" aria-live="polite"></div>
-
+	<!-- Live chart -->
 	<?php if ( (int) $settings->get( 'show_chart', 1 ) === 1 ) : ?>
 	<div class="fnosp-chart-wrap">
 		<div class="fnosp-chart-title"><?php esc_html_e( 'Live Chart', 'fno-signal-pro' ); ?></div>
 		<div id="fnosp-tvchart"></div>
-		<p class="description"><?php esc_html_e( 'Live chart by TradingView. Data may be delayed depending on exchange/feed. You can change symbol & timeframe directly on the chart.', 'fno-signal-pro' ); ?></p>
 	</div>
 	<?php endif; ?>
 
-	<div class="fnosp-help card">
-		<h2><?php esc_html_e( 'Shortcode & REST', 'fno-signal-pro' ); ?></h2>
-		<p><?php esc_html_e( 'Embed a live signal widget anywhere:', 'fno-signal-pro' ); ?></p>
-		<code>[fno_signal instrument="NIFTY" ai="0" refresh="0"]</code>
-		<p><?php esc_html_e( 'Or embed a specific option-strike buy/sell plan:', 'fno-signal-pro' ); ?></p>
-		<code>[fno_signal instrument="BANKNIFTY" strike="58000" opt_type="CE" dte="7" premium="540"]</code>
-		<p><?php esc_html_e( 'REST endpoint (auth required unless public access enabled):', 'fno-signal-pro' ); ?></p>
-		<code><?php echo esc_html( rest_url( 'fnosp/v1/signal?instrument=NIFTY&ai=0' ) ); ?></code>
+	<!-- Today's Top Picks (auto-loaded) -->
+	<div class="fnosp-card" style="margin-top:16px;">
+		<div class="fnosp-card-head"><strong><?php esc_html_e( "Today's Top Picks — Buy & Sell", 'fno-signal-pro' ); ?></strong></div>
+		<div id="fnosp-scan-result">
+			<p class="fnosp-loading"><?php esc_html_e( 'Scanning stocks...', 'fno-signal-pro' ); ?></p>
+		</div>
+	</div>
+
+	<div class="fnosp-help card" style="margin-top:16px;">
+		<h2><?php esc_html_e( 'Shortcode', 'fno-signal-pro' ); ?></h2>
+		<code>[fno_signal instrument="BANKNIFTY" chart="1"]</code>
+		<p class="description"><?php esc_html_e( 'Embed on any page. The strike, targets and stop-loss are always automatic.', 'fno-signal-pro' ); ?></p>
 	</div>
 </div>

@@ -1,452 +1,207 @@
-/* global FNOSP_ADMIN */
+/* global FNOSP_ADMIN, TradingView */
 ( function () {
 	'use strict';
 
-	function el( tag, cls, html ) {
-		var n = document.createElement( tag );
-		if ( cls ) { n.className = cls; }
-		if ( undefined !== html ) { n.innerHTML = html; }
-		return n;
+	// --- Helpers ---
+	function el( tag, cls, html ) { var n = document.createElement( tag ); if ( cls ) n.className = cls; if ( html !== undefined ) n.innerHTML = html; return n; }
+	function esc( s ) { var d = document.createElement( 'div' ); d.textContent = ( s == null ) ? '' : String( s ); return d.innerHTML; }
+	function num( v ) { return ( v == null || v === '' ) ? '-' : v; }
+	function badgeClass( s ) { return s === 'BUY' ? 'buy' : ( s === 'SELL' ? 'sell' : 'notrade' ); }
+
+	// --- TradingView symbol mapping ---
+	function tvSymbol( sym ) {
+		var m = { NIFTY:'NSE:NIFTY', NIFTY50:'NSE:NIFTY', BANKNIFTY:'NSE:BANKNIFTY', FINNIFTY:'NSE:CNXFINANCE', MIDCPNIFTY:'NSE:NIFTYMIDSELECT', SENSEX:'BSE:SENSEX' };
+		sym = ( sym || '' ).toUpperCase();
+		return m[ sym ] || ( sym.indexOf( ':' ) !== -1 ? sym : 'NSE:' + sym );
+	}
+	function renderChart( sym ) {
+		var h = document.getElementById( 'fnosp-tvchart' );
+		if ( !h || typeof TradingView === 'undefined' ) return;
+		h.innerHTML = '';
+		try { new TradingView.widget({ autosize:true, symbol:tvSymbol(sym), interval:'15', timezone:'Asia/Kolkata', theme:FNOSP_ADMIN.chartTheme==='dark'?'dark':'light', style:'1', locale:'en', container_id:'fnosp-tvchart', hide_side_toolbar:false, allow_symbol_change:true, studies:['STD;EMA','RSI@tv-basicstudies'] }); } catch(e){}
 	}
 
-	function esc( s ) {
-		var d = document.createElement( 'div' );
-		d.textContent = null === s || undefined === s ? '' : String( s );
-		return d.innerHTML;
-	}
-
-	function num( v ) {
-		if ( null === v || undefined === v || '' === v ) { return '-'; }
-		return v;
-	}
-
-	function badgeClass( signal ) {
-		if ( 'BUY' === signal ) { return 'buy'; }
-		if ( 'SELL' === signal ) { return 'sell'; }
-		return 'notrade';
-	}
-
+	// --- Main signal renderer ---
 	function renderSignal( data ) {
 		var wrap = el( 'div', 'fnosp-card' );
 
-		// Head.
+		// Signal header
 		var head = el( 'div', 'fnosp-card-head' );
-		var left = el( 'div' );
-		left.appendChild( el( 'span', 'fnosp-badge ' + badgeClass( data.signal ), esc( data.signal ) ) );
-		left.appendChild( el( 'span', '', ' &nbsp;<strong>' + esc( data.instrument ) + '</strong> @ ₹' + esc( data.ltp ) ) );
-		head.appendChild( left );
-
-		var conf = el( 'div', 'fnosp-conf' );
-		conf.innerHTML = 'Confidence: <strong>' + esc( data.confidence ) + '%</strong> · ' + esc( data.trend_label );
-		var meter = el( 'div', 'fnosp-meter' );
-		meter.appendChild( el( 'span', '', '' ) );
-		meter.firstChild.style.width = Math.max( 0, Math.min( 100, data.confidence ) ) + '%';
-		conf.appendChild( meter );
-		head.appendChild( conf );
+		head.innerHTML = '<span class="fnosp-badge ' + badgeClass(data.signal) + '">' + esc(data.signal) + '</span>'
+			+ ' <strong>' + esc(data.instrument) + '</strong> @ ₹' + esc(data.ltp)
+			+ '<span class="fnosp-conf">Confidence <strong>' + esc(data.confidence) + '%</strong> · ' + esc(data.trend_label) + '</span>';
 		wrap.appendChild( head );
 
-		// === AUTO STRIKE RECOMMENDATION (prominent) ===
+		// Confidence meter
+		var meter = el( 'div', 'fnosp-meter' );
+		meter.innerHTML = '<span style="width:' + Math.min(100, data.confidence) + '%"></span>';
+		wrap.appendChild( meter );
+
+		// ⚡ AUTO RECOMMENDED STRIKE (prominent, no manual input)
 		if ( data.option_plan ) {
 			var op = data.option_plan;
-			var recBox = el( 'div', 'fnosp-rec' );
-			recBox.appendChild( el( 'div', 'fnosp-rec-title', '⚡ Recommended Strike' ) );
-			var recGrid = el( 'div', 'fnosp-grid' );
-			var rcells = [
-				[ 'Strike', op.label ],
-				[ 'Type', op.moneyness + ' · delta ' + op.delta ],
-				[ 'Entry Premium', '≈ ₹' + num( op.premium_now ) + ' (' + ( op.premium_source || 'est.' ) + ')' ]
+			var rec = el( 'div', 'fnosp-rec' );
+			rec.innerHTML = '<div class="fnosp-rec-title">⚡ ' + esc(op.label) + ' — ' + esc(op.moneyness) + ' (delta ' + esc(op.delta) + ')</div>';
+
+			var grid = el( 'div', 'fnosp-grid' );
+			var cells = [
+				['Entry Premium', '₹' + num(op.premium_now)],
+				['IV / Expiry', num(op.iv_used) + '% / ' + num(op.dte) + ' days']
 			];
 			if ( op.sell_when && op.sell_when.targets ) {
 				var tg = op.sell_when.targets;
-				rcells.push( [ 'T1 (book ⅓)', '₹' + num( tg[0].premium ) + ' (spot ' + num( tg[0].spot ) + ')' ] );
-				rcells.push( [ 'T2 (book ⅓)', '₹' + num( tg[1].premium ) + ' (spot ' + num( tg[1].spot ) + ')' ] );
-				rcells.push( [ 'T3 (trail)', '₹' + num( tg[2].premium ) + ' (spot ' + num( tg[2].spot ) + ')' ] );
+				cells.push(['T1 (book ⅓)', '₹' + num(tg[0].premium) + ' ← spot ' + num(tg[0].spot)]);
+				cells.push(['T2 (book ⅓)', '₹' + num(tg[1].premium) + ' ← spot ' + num(tg[1].spot)]);
+				cells.push(['T3 (trail)', '₹' + num(tg[2].premium) + ' ← spot ' + num(tg[2].spot)]);
 			}
 			if ( op.sell_when && op.sell_when.stop_loss ) {
-				rcells.push( [ 'Stop Loss', '₹' + num( op.sell_when.stop_loss.premium ) + ' (spot ' + num( op.sell_when.stop_loss.spot ) + ')' ] );
+				cells.push(['🛑 Stop Loss', '₹' + num(op.sell_when.stop_loss.premium) + ' ← spot ' + num(op.sell_when.stop_loss.spot)]);
 			}
-			rcells.push( [ 'IV / Days', op.iv_used + '% / ' + op.dte + 'd' ] );
-			rcells.forEach( function ( c ) {
-				var tile = el( 'div', 'fnosp-tile' );
-				tile.appendChild( el( 'div', 'k', esc( c[ 0 ] ) ) );
-				tile.appendChild( el( 'div', 'v', esc( c[ 1 ] ) ) );
-				recGrid.appendChild( tile );
-			} );
-			recBox.appendChild( recGrid );
-			recBox.appendChild( el( 'div', 'fnosp-rec-cond', '📌 ' + esc( op.buy_when.condition ) ) );
-			if ( op.sell_when && op.sell_when.time_exit ) {
-				recBox.appendChild( el( 'div', 'fnosp-rec-cond', '⏱ ' + esc( op.sell_when.time_exit ) ) );
-			}
-			if ( ! op.aligned ) {
-				recBox.appendChild( el( 'div', 'fnosp-rec-warn', '⚠️ ' + esc( op.align_note ) ) );
-			}
-			wrap.appendChild( recBox );
+			cells.forEach(function(c){ var t=el('div','fnosp-tile'); t.innerHTML='<div class="k">'+esc(c[0])+'</div><div class="v">'+esc(c[1])+'</div>'; grid.appendChild(t); });
+			rec.appendChild( grid );
+			rec.appendChild( el('div','fnosp-rec-cond','📌 '+esc(op.buy_when.condition)) );
+			if ( op.sell_when && op.sell_when.time_exit ) rec.appendChild( el('div','fnosp-rec-cond','⏱ '+esc(op.sell_when.time_exit)) );
+			wrap.appendChild( rec );
+		} else if ( data.signal === 'NO TRADE' ) {
+			wrap.appendChild( el('div','fnosp-rec','<div class="fnosp-rec-title">⏸ No high-confidence trade right now</div><p>Wait for a clear setup. Not trading is a smart decision.</p>') );
 		}
 
-		// Setup tiles (spot-based entry/SL/targets).
-		if ( data.setup ) {
-			wrap.appendChild( el( 'div', 'fnosp-section-title', 'Spot Levels (underlying)' ) );
-			var grid = el( 'div', 'fnosp-grid' );
-			var tiles = [
-				[ 'Entry', '₹' + num( data.setup.entry_low ) + ' – ₹' + num( data.setup.entry_high ) ],
-				[ 'Stop Loss', '₹' + num( data.setup.stop_loss ) ],
-				[ 'Target 1', '₹' + num( data.setup.target1 ) ],
-				[ 'Target 2', '₹' + num( data.setup.target2 ) ],
-				[ 'Target 3', '₹' + num( data.setup.target3 ) ],
-				[ 'Risk:Reward', num( data.setup.risk_reward ) ],
-				[ 'Holding', num( data.setup.holding ) ],
-				[ 'ATR', num( data.setup.atr ) ]
-			];
-			tiles.forEach( function ( t ) {
-				var tile = el( 'div', 'fnosp-tile' );
-				tile.appendChild( el( 'div', 'k', esc( t[ 0 ] ) ) );
-				tile.appendChild( el( 'div', 'v', esc( t[ 1 ] ) ) );
-				grid.appendChild( tile );
-			} );
-			wrap.appendChild( grid );
-		} else {
-			wrap.appendChild( el( 'p', '', '<em>No high-probability trade. Confidence below threshold or risk filter triggered.</em>' ) );
-		}
-
-		// Score breakdown.
-		if ( data.scores ) {
-			wrap.appendChild( el( 'div', 'fnosp-section-title', 'Score Breakdown (100-pt framework)' ) );
-			var table = el( 'table', 'fnosp-scores' );
-			table.innerHTML = '<tr><th>Component</th><th>Points</th><th>Weight</th><th></th></tr>';
-			Object.keys( data.scores ).forEach( function ( k ) {
-				var sc = data.scores[ k ];
-				var pct = sc.weight ? ( sc.points / sc.weight ) * 100 : 0;
-				var row = el( 'tr' );
-				row.innerHTML =
-					'<td>' + esc( k.replace( /_/g, ' ' ) ) + '</td>' +
-					'<td>' + esc( sc.points ) + '</td>' +
-					'<td>' + esc( sc.weight ) + '</td>' +
-					'<td><div class="fnosp-scorebar"><span style="width:' + pct.toFixed( 0 ) + '%"></span></div></td>';
-				table.appendChild( row );
-			} );
-			wrap.appendChild( table );
-		}
-
-		// Probabilities.
-		if ( data.probabilities ) {
-			wrap.appendChild( el( 'div', 'fnosp-section-title', 'Probability Table' ) );
-			var pg = el( 'div', 'fnosp-grid' );
-			var probs = [
-				[ 'Trend', data.probabilities.trend ],
-				[ 'T1', data.probabilities.target1 ],
-				[ 'T2', data.probabilities.target2 ],
-				[ 'T3', data.probabilities.target3 ],
-				[ 'SL Hit', data.probabilities.stop_loss_hit ]
-			];
-			probs.forEach( function ( p ) {
-				var tile = el( 'div', 'fnosp-tile' );
-				tile.appendChild( el( 'div', 'k', esc( p[ 0 ] ) ) );
-				tile.appendChild( el( 'div', 'v', esc( p[ 1 ] ) ) );
-				pg.appendChild( tile );
-			} );
-			wrap.appendChild( pg );
-		}
-
-		// Option strategy.
-		if ( data.option_strategy && data.option_strategy.legs ) {
-			wrap.appendChild( el( 'div', 'fnosp-section-title', 'Option Strategy (' + esc( data.option_strategy.primary ) + ')' ) );
-			var ot = el( 'table', 'fnosp-scores' );
-			ot.innerHTML = '<tr><th>Type</th><th>Strike</th><th>Premium</th><th>Prob.</th><th>Risk</th></tr>';
-			data.option_strategy.legs.forEach( function ( leg ) {
-				var r = el( 'tr' );
-				r.innerHTML =
-					'<td>' + esc( leg.type ) + '</td>' +
-					'<td>' + esc( leg.strike ) + '</td>' +
-					'<td>' + esc( leg.premium_range ) + '</td>' +
-					'<td>' + esc( leg.probability ) + '</td>' +
-					'<td>' + esc( leg.risk ) + '</td>';
-				ot.appendChild( r );
-			} );
-			wrap.appendChild( ot );
-		}
-
-		// Analysis notes.
-		if ( data.analysis ) {
-			wrap.appendChild( el( 'div', 'fnosp-section-title', 'Analysis' ) );
-			var ul = el( 'ul', 'fnosp-list' );
-			Object.keys( data.analysis ).forEach( function ( k ) {
-				ul.appendChild( el( 'li', '', '<strong>' + esc( k.replace( /_/g, ' ' ) ) + ':</strong> ' + esc( data.analysis[ k ] ) ) );
-			} );
-			wrap.appendChild( ul );
-		}
-
-		// Risk factors.
-		if ( data.risk_factors && data.risk_factors.length ) {
-			wrap.appendChild( el( 'div', 'fnosp-section-title', 'Risk Factors' ) );
-			var rl = el( 'ul', 'fnosp-list' );
-			data.risk_factors.forEach( function ( f ) {
-				rl.appendChild( el( 'li', '', esc( f ) ) );
-			} );
-			wrap.appendChild( rl );
-		}
-
-		// Verdict.
-		if ( data.final_verdict ) {
-			wrap.appendChild( el( 'div', 'fnosp-verdict', esc( data.final_verdict ) ) );
-		}
-
-		// Plain-language summary.
-		if ( data.layman_summary ) {
-			wrap.appendChild( el( 'div', 'fnosp-section-title', 'In Simple Words' ) );
-			var lay = el( 'div', 'fnosp-layman' );
-			if ( data.layman_summary.headline ) {
-				lay.appendChild( el( 'div', 'fnosp-layman-head', esc( data.layman_summary.headline ) ) );
-			}
-			if ( data.layman_summary.text ) {
-				lay.appendChild( el( 'div', '', esc( data.layman_summary.text ) ) );
-			}
-			if ( data.layman_summary.steps && data.layman_summary.steps.length ) {
-				var sl = el( 'ul', 'fnosp-list' );
-				data.layman_summary.steps.forEach( function ( st ) {
-					sl.appendChild( el( 'li', '', esc( st ) ) );
-				} );
-				lay.appendChild( sl );
-			}
-			wrap.appendChild( lay );
-		}
-		if ( data.ai && data.ai.narrative ) {
-			wrap.appendChild( el( 'div', 'fnosp-section-title', 'AI Commentary (' + esc( data.ai.model ) + ')' ) );
-			wrap.appendChild( el( 'div', 'fnosp-ai', esc( data.ai.narrative ) ) );
-		} else if ( data.ai && data.ai.error ) {
-			wrap.appendChild( el( 'div', 'fnosp-error', 'AI: ' + esc( data.ai.error ) ) );
-		}
-
-		// (Option plan is now shown at the top as "Recommended Strike".)
-
-		// Data coverage notes (free provider transparency).
-		if ( data.data_notes && data.data_notes.length ) {
-			wrap.appendChild( el( 'div', 'fnosp-section-title', 'Data Coverage' ) );
-			var dn = el( 'ul', 'fnosp-list' );
-			data.data_notes.forEach( function ( n ) {
-				dn.appendChild( el( 'li', '', esc( n ) ) );
-			} );
-			wrap.appendChild( dn );
-		}
-
-		// Expert Advice footer (plain-language, prominent).
+		// Expert Advice footer
 		if ( data.expert_advice ) {
-			var adv = el( 'div', 'fnosp-expert' );
-			adv.appendChild( el( 'div', 'fnosp-expert-head', '🧑‍🏫 Expert Advice (in simple words)' ) );
-			adv.appendChild( el( 'div', '', esc( data.expert_advice ) ) );
+			var adv = el('div','fnosp-expert');
+			adv.innerHTML = '<div class="fnosp-expert-head">🧑‍🏫 Expert Advice</div>' + esc(data.expert_advice);
 			wrap.appendChild( adv );
 		}
 
-		// Meta + disclaimer.
-		var meta = 'Source: ' + esc( data.source ) + ( data.cached ? ' (cached)' : '' ) + ' · ' + esc( data.generated_at );
-		wrap.appendChild( el( 'div', 'fnosp-disclaimer', meta + '<br>' + esc( data.disclaimer ) ) );
-
+		// Meta
+		wrap.appendChild( el('div','fnosp-disclaimer', esc(data.source) + (data.cached?' (cached)':'') + ' · ' + esc(data.generated_at) + '<br>' + esc(data.disclaimer)) );
 		return wrap;
 	}
 
-	function tvSymbol( sym ) {
-		var m = {
-			NIFTY: 'NSE:NIFTY',
-			NIFTY50: 'NSE:NIFTY',
-			BANKNIFTY: 'NSE:BANKNIFTY',
-			FINNIFTY: 'NSE:CNXFINANCE',
-			MIDCPNIFTY: 'NSE:NIFTYMIDSELECT',
-			SENSEX: 'BSE:SENSEX'
-		};
-		sym = ( sym || '' ).toUpperCase();
-		if ( m[ sym ] ) { return m[ sym ]; }
-		if ( sym.indexOf( ':' ) !== -1 ) { return sym; }
-		return 'NSE:' + sym;
-	}
+	// --- Fetch + render signal ---
+	var currentSym = '';
+	var refreshTimer = null;
 
-	var fnospTvWidget = null;
-	function renderChart( sym ) {
-		var holder = document.getElementById( 'fnosp-tvchart' );
-		if ( ! holder || typeof TradingView === 'undefined' ) { return; }
-		holder.innerHTML = '';
-		try {
-			fnospTvWidget = new TradingView.widget( {
-				autosize: true,
-				symbol: tvSymbol( sym ),
-				interval: '15',
-				timezone: 'Asia/Kolkata',
-				theme: ( FNOSP_ADMIN.chartTheme === 'dark' ? 'dark' : 'light' ),
-				style: '1',
-				locale: 'en',
-				container_id: 'fnosp-tvchart',
-				hide_side_toolbar: false,
-				allow_symbol_change: true,
-				studies: [ 'STD;EMA', 'RSI@tv-basicstudies' ]
-			} );
-		} catch ( e ) {
-			holder.innerHTML = '<p class="fnosp-error">Chart could not load.</p>';
-		}
-	}
-
-	function fetchSignal() {
-		var instrument = document.getElementById( 'fnosp-instrument' ).value;
-		var useAi = document.getElementById( 'fnosp-use-ai' ).checked ? 1 : 0;
-		var nocache = document.getElementById( 'fnosp-nocache' ).checked ? 1 : 0;
+	function fetchSignal( sym, silent ) {
+		currentSym = sym || currentSym;
 		var out = document.getElementById( 'fnosp-result' );
+		if ( !silent ) out.innerHTML = '<p class="fnosp-loading">' + FNOSP_ADMIN.i18n.loading + '</p>';
 
-		out.innerHTML = '';
-		out.appendChild( el( 'p', 'fnosp-loading', FNOSP_ADMIN.i18n.loading ) );
-
-		var url = FNOSP_ADMIN.restUrl +
-			'?instrument=' + encodeURIComponent( instrument ) +
-			'&ai=' + useAi + '&nocache=' + nocache;
-
-		// Optional per-strike option plan.
-		var strikeEl = document.getElementById( 'fnosp-strike' );
-		var strike = strikeEl ? strikeEl.value : '';
-		if ( strike && parseFloat( strike ) > 0 ) {
-			var ot = document.getElementById( 'fnosp-opt-type' ).value;
-			var dte = document.getElementById( 'fnosp-dte' ).value || 7;
-			url += '&strike=' + encodeURIComponent( strike ) + '&opt_type=' + encodeURIComponent( ot ) + '&dte=' + encodeURIComponent( dte );
-			var expEl = document.getElementById( 'fnosp-expiry' );
-			var exp = expEl ? expEl.value : '';
-			if ( exp ) {
-				url += '&expiry=' + encodeURIComponent( exp );
-			}
-			var premEl = document.getElementById( 'fnosp-premium' );
-			var prem = premEl ? premEl.value : '';
-			if ( prem && parseFloat( prem ) > 0 ) {
-				url += '&premium=' + encodeURIComponent( prem );
-			}
-		}
-
-		fetch( url, {
-			headers: { 'X-WP-Nonce': FNOSP_ADMIN.nonce },
-			credentials: 'same-origin'
-		} )
-			.then( function ( r ) { return r.json().then( function ( j ) { return { ok: r.ok, body: j }; } ); } )
-			.then( function ( res ) {
+		var url = FNOSP_ADMIN.restUrl + '?instrument=' + encodeURIComponent(currentSym) + '&nocache=1';
+		fetch( url, { headers:{'X-WP-Nonce':FNOSP_ADMIN.nonce}, credentials:'same-origin' })
+			.then(function(r){ return r.json().then(function(j){return {ok:r.ok,body:j};}); })
+			.then(function(res){
 				out.innerHTML = '';
-				if ( ! res.ok ) {
-					var msg = res.body && res.body.message ? res.body.message : FNOSP_ADMIN.i18n.error;
-					out.appendChild( el( 'p', 'fnosp-error', esc( msg ) ) );
-					return;
-				}
-				out.appendChild( renderSignal( res.body ) );
-			} )
-			.catch( function () {
-				out.innerHTML = '';
-				out.appendChild( el( 'p', 'fnosp-error', FNOSP_ADMIN.i18n.error ) );
-			} );
+				if ( !res.ok ) { out.innerHTML = '<p class="fnosp-error">' + esc(res.body&&res.body.message?res.body.message:'Error') + '</p>'; return; }
+				out.appendChild( renderSignal(res.body) );
+				// Pulse the live dot
+				var dot = document.getElementById('fnosp-live-dot');
+				if (dot) { dot.classList.remove('pulse'); void dot.offsetWidth; dot.classList.add('pulse'); }
+			})
+			.catch(function(){ if(!silent) out.innerHTML = '<p class="fnosp-error">Network error. Retrying...</p>'; });
 	}
 
-	document.addEventListener( 'DOMContentLoaded', function () {
-		var btn = document.getElementById( 'fnosp-generate' );
-		if ( btn ) {
-			btn.addEventListener( 'click', fetchSignal );
-		}
+	function startAutoRefresh() {
+		if ( refreshTimer ) clearInterval( refreshTimer );
+		refreshTimer = setInterval( function(){ fetchSignal( null, true ); }, 5000 );
+	}
 
-		// Live chart: render on load and when the instrument changes.
-		var instEl = document.getElementById( 'fnosp-instrument' );
-		if ( document.getElementById( 'fnosp-tvchart' ) && instEl ) {
-			renderChart( instEl.value );
-			instEl.addEventListener( 'change', function () { renderChart( instEl.value ); } );
-		}
-
-		// Auto-fill days-to-expiry when an expiry date is chosen.
-		var expEl = document.getElementById( 'fnosp-expiry' );
-		var dteEl = document.getElementById( 'fnosp-dte' );
-		if ( expEl && dteEl ) {
-			expEl.addEventListener( 'change', function () {
-				if ( ! expEl.value ) { return; }
-				var diff = Math.ceil( ( new Date( expEl.value ).getTime() - Date.now() ) / 86400000 );
-				if ( diff >= 1 ) { dteEl.value = diff; }
-			} );
-		}
-
-		var tgBtn = document.getElementById( 'fnosp-tg-test' );
-		if ( tgBtn ) {
-			tgBtn.addEventListener( 'click', function () {
-				runTest( tgBtn, FNOSP_ADMIN.tgTestUrl, 'fnosp-tg-test-result' );
-			} );
-		}
-
-		var emailBtn = document.getElementById( 'fnosp-email-test' );
-		if ( emailBtn ) {
-			emailBtn.addEventListener( 'click', function () {
-				runTest( emailBtn, FNOSP_ADMIN.emailTestUrl, 'fnosp-email-test-result' );
-			} );
-		}
-
-		var scanBtn = document.getElementById( 'fnosp-scan' );
-		if ( scanBtn ) {
-			scanBtn.addEventListener( 'click', runScan );
-		}
-	} );
-
-	function pickRow( x ) {
+	// --- Scanner (Top Picks with full details) ---
+	function renderPick( x ) {
 		var s = x.setup;
-		var lvls = s ? ( ' · Entry ₹' + x.setup.entry_low + '–₹' + x.setup.entry_high + ' · SL ₹' + s.stop_loss + ' · T ₹' + s.target1 + '/₹' + s.target2 ) : '';
-		return '<li><strong>' + esc( x.instrument ) + '</strong> @ ₹' + esc( x.ltp ) + ' — <strong>' + esc( x.confidence ) + '%</strong> (' + esc( x.trend ) + ')' + esc( lvls ) + '</li>';
+		var html = '<div class="fnosp-pick">';
+		html += '<span class="fnosp-badge ' + badgeClass(x.signal) + ' fnosp-badge-sm">' + esc(x.signal) + '</span>';
+		html += ' <strong>' + esc(x.instrument) + '</strong>';
+		html += ' <span class="fnosp-pick-conf">' + esc(x.confidence) + '% · ' + esc(x.trend) + '</span>';
+		html += ' @ ₹' + esc(x.ltp);
+		if ( s ) {
+			html += '<div class="fnosp-pick-levels">';
+			html += 'Entry ₹' + esc(s.entry_low) + '–₹' + esc(s.entry_high);
+			html += ' · SL ₹' + esc(s.stop_loss);
+			html += ' · T1 ₹' + esc(s.target1) + ' · T2 ₹' + esc(s.target2);
+			html += '</div>';
+		}
+		if ( x.headline ) html += '<div class="fnosp-pick-advice">' + esc(x.headline) + '</div>';
+		html += '</div>';
+		return html;
 	}
 
-	function runScan() {
-		var btn = document.getElementById( 'fnosp-scan' );
+	function loadScan() {
 		var out = document.getElementById( 'fnosp-scan-result' );
-		btn.disabled = true;
-		out.innerHTML = '<p class="fnosp-loading">Scanning stocks… this can take 20–40s on first run.</p>';
-
-		fetch( FNOSP_ADMIN.scanUrl, {
-			headers: { 'X-WP-Nonce': FNOSP_ADMIN.nonce },
-			credentials: 'same-origin'
-		} )
-			.then( function ( r ) { return r.json().then( function ( j ) { return { ok: r.ok, body: j }; } ); } )
-			.then( function ( res ) {
-				btn.disabled = false;
-				if ( ! res.ok ) {
-					out.innerHTML = '<p class="fnosp-error">' + esc( res.body && res.body.message ? res.body.message : 'Scan failed.' ) + '</p>';
-					return;
-				}
+		fetch( FNOSP_ADMIN.scanUrl, { headers:{'X-WP-Nonce':FNOSP_ADMIN.nonce}, credentials:'same-origin' })
+			.then(function(r){ return r.json().then(function(j){return {ok:r.ok,body:j};}); })
+			.then(function(res){
+				if ( !res.ok ) { out.innerHTML = '<p class="fnosp-error">Scan failed. Try again in a moment.</p>'; return; }
 				var d = res.body;
-				var html = '<div class="fnosp-card">';
-				html += '<div class="fnosp-card-head"><strong>Today\'s Top Picks</strong><span class="fnosp-conf">Scanned ' + esc( d.scanned ) + ' · min ' + esc( d.min_confidence ) + '% · ' + ( d.market_open ? 'market open' : 'market closed' ) + ( d.cached ? ' · cached' : '' ) + '</span></div>';
+				var html = '<div class="fnosp-scan-meta">Scanned ' + esc(d.scanned) + ' symbols · VIX ' + esc(d.macro.vix) + ' · FII ' + (d.macro.fii_net>=0?'+':'') + esc(d.macro.fii_net) + ' Cr</div>';
 
-				html += '<div class="fnosp-section-title" style="color:#14794a">BUY candidates (' + d.buy.length + ')</div>';
-				html += d.buy.length ? ( '<ul class="fnosp-list">' + d.buy.map( pickRow ).join( '' ) + '</ul>' ) : '<p><em>No high-confidence BUY today.</em></p>';
+				html += '<div class="fnosp-section-title" style="color:#14794a">🟢 BUY (' + d.buy.length + ')</div>';
+				if ( d.buy.length ) { d.buy.forEach(function(x){ html += renderPick(x); }); }
+				else { html += '<p class="fnosp-muted">No high-confidence BUY today.</p>'; }
 
-				html += '<div class="fnosp-section-title" style="color:#b32424">SELL candidates (' + d.sell.length + ')</div>';
-				html += d.sell.length ? ( '<ul class="fnosp-list">' + d.sell.map( pickRow ).join( '' ) + '</ul>' ) : '<p><em>No high-confidence SELL today.</em></p>';
+				html += '<div class="fnosp-section-title" style="color:#b32424">🔴 SELL (' + d.sell.length + ')</div>';
+				if ( d.sell.length ) { d.sell.forEach(function(x){ html += renderPick(x); }); }
+				else { html += '<p class="fnosp-muted">No high-confidence SELL today.</p>'; }
 
-				html += '<div class="fnosp-disclaimer">' + esc( d.disclaimer ) + ' · ' + esc( d.generated_at ) + '</div>';
-				html += '</div>';
+				html += '<div class="fnosp-disclaimer">' + esc(d.disclaimer) + '</div>';
 				out.innerHTML = html;
-			} )
-			.catch( function () {
-				btn.disabled = false;
-				out.innerHTML = '<p class="fnosp-error">Scan failed (network/timeout). Try again.</p>';
-			} );
+			})
+			.catch(function(){ out.innerHTML = '<p class="fnosp-error">Scan failed (timeout/network). Refresh page to retry.</p>'; });
 	}
 
+	// --- Stock search ---
+	function doSearch() {
+		var input = document.getElementById('fnosp-search');
+		var val = (input.value || '').trim().toUpperCase();
+		if ( !val ) return;
+		fetchSignal( val, false );
+		renderChart( val );
+		input.value = '';
+	}
+
+	// --- Telegram/Email test helper ---
 	function runTest( btn, url, resultId ) {
 		var out = document.getElementById( resultId );
-		btn.disabled = true;
-		out.textContent = FNOSP_ADMIN.i18n.tgSending;
-		out.className = '';
-		fetch( url, {
-			method: 'POST',
-			headers: { 'X-WP-Nonce': FNOSP_ADMIN.nonce },
-			credentials: 'same-origin'
-		} )
-			.then( function ( r ) { return r.json().then( function ( j ) { return { ok: r.ok, body: j }; } ); } )
-			.then( function ( res ) {
-				btn.disabled = false;
-				if ( res.ok && res.body && res.body.ok ) {
-					out.textContent = '✓ ' + ( res.body.message || FNOSP_ADMIN.i18n.tgSent );
-					out.className = 'fnosp-tg-ok';
-				} else {
-					var msg = res.body && res.body.message ? res.body.message : FNOSP_ADMIN.i18n.tgError;
-					out.textContent = '✗ ' + msg;
-					out.className = 'fnosp-tg-err';
-				}
-			} )
-			.catch( function () {
-				btn.disabled = false;
-				out.textContent = '✗ ' + FNOSP_ADMIN.i18n.tgError;
-				out.className = 'fnosp-tg-err';
-			} );
+		btn.disabled = true; out.textContent = FNOSP_ADMIN.i18n.tgSending; out.className = '';
+		fetch( url, { method:'POST', headers:{'X-WP-Nonce':FNOSP_ADMIN.nonce}, credentials:'same-origin' })
+			.then(function(r){ return r.json().then(function(j){return {ok:r.ok,body:j};}); })
+			.then(function(res){ btn.disabled=false; if(res.ok&&res.body&&res.body.ok){out.textContent='✓ '+(res.body.message||'Sent');out.className='fnosp-tg-ok';}else{out.textContent='✗ '+(res.body&&res.body.message?res.body.message:'Failed');out.className='fnosp-tg-err';}})
+			.catch(function(){ btn.disabled=false; out.textContent='✗ Failed'; out.className='fnosp-tg-err'; });
 	}
-} )();
+
+	// --- Init ---
+	document.addEventListener( 'DOMContentLoaded', function () {
+		var instEl = document.getElementById( 'fnosp-instrument' );
+		currentSym = instEl ? instEl.value : 'NIFTY';
+
+		// Initial load
+		fetchSignal( currentSym, false );
+		startAutoRefresh();
+
+		// Chart
+		if ( document.getElementById('fnosp-tvchart') ) renderChart( currentSym );
+
+		// Instrument change
+		if ( instEl ) {
+			instEl.addEventListener( 'change', function() {
+				fetchSignal( instEl.value, false );
+				renderChart( instEl.value );
+			});
+		}
+
+		// Stock search
+		var searchBtn = document.getElementById('fnosp-search-go');
+		var searchInput = document.getElementById('fnosp-search');
+		if ( searchBtn ) searchBtn.addEventListener( 'click', doSearch );
+		if ( searchInput ) searchInput.addEventListener( 'keydown', function(e){ if(e.key==='Enter'){e.preventDefault();doSearch();} });
+
+		// Today's Top Picks (auto-load)
+		loadScan();
+
+		// Telegram/Email test buttons (settings page)
+		var tgBtn = document.getElementById('fnosp-tg-test');
+		if ( tgBtn ) tgBtn.addEventListener('click', function(){ runTest(tgBtn, FNOSP_ADMIN.tgTestUrl, 'fnosp-tg-test-result'); });
+		var emailBtn = document.getElementById('fnosp-email-test');
+		if ( emailBtn ) emailBtn.addEventListener('click', function(){ runTest(emailBtn, FNOSP_ADMIN.emailTestUrl, 'fnosp-email-test-result'); });
+	});
+})();
