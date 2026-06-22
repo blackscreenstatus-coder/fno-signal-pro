@@ -148,8 +148,8 @@ class FnOSP_Signal_Engine {
 				isset( $opts['dte'] ) ? max( 1, (int) $opts['dte'] ) : 7,
 				isset( $opts['premium'] ) ? (float) $opts['premium'] : 0.0
 			);
-		} elseif ( ! empty( $opts['auto_option'] ) && 'NO TRADE' !== $direction ) {
-			// Auto ATM plan matching the signal direction (used by alerts).
+		} elseif ( 'NO TRADE' !== $direction ) {
+			// ALWAYS auto-generate an ATM option plan matching the signal direction.
 			$step  = $this->strike_step( $snapshot['instrument'], $snapshot['ltp'] );
 			$atm   = round( $snapshot['ltp'] / $step ) * $step;
 			$otype = ( 'BUY' === $direction ) ? 'CE' : 'PE';

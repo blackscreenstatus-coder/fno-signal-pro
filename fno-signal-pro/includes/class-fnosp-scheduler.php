@@ -201,7 +201,6 @@ class FnOSP_Scheduler {
 
 			$result = $engine->generate( $instrument, array(
 				'use_ai'      => $use_ai,
-				'auto_option' => $incl_opt,
 				'dte'         => $opt_dte,
 			) );
 			if ( is_wp_error( $result ) ) {

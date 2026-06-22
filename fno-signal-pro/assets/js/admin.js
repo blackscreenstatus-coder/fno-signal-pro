@@ -45,8 +45,47 @@
 		head.appendChild( conf );
 		wrap.appendChild( head );
 
-		// Setup tiles.
+		// === AUTO STRIKE RECOMMENDATION (prominent) ===
+		if ( data.option_plan ) {
+			var op = data.option_plan;
+			var recBox = el( 'div', 'fnosp-rec' );
+			recBox.appendChild( el( 'div', 'fnosp-rec-title', '⚡ Recommended Strike' ) );
+			var recGrid = el( 'div', 'fnosp-grid' );
+			var rcells = [
+				[ 'Strike', op.label ],
+				[ 'Type', op.moneyness + ' · delta ' + op.delta ],
+				[ 'Entry Premium', '≈ ₹' + num( op.premium_now ) + ' (' + ( op.premium_source || 'est.' ) + ')' ]
+			];
+			if ( op.sell_when && op.sell_when.targets ) {
+				var tg = op.sell_when.targets;
+				rcells.push( [ 'T1 (book ⅓)', '₹' + num( tg[0].premium ) + ' (spot ' + num( tg[0].spot ) + ')' ] );
+				rcells.push( [ 'T2 (book ⅓)', '₹' + num( tg[1].premium ) + ' (spot ' + num( tg[1].spot ) + ')' ] );
+				rcells.push( [ 'T3 (trail)', '₹' + num( tg[2].premium ) + ' (spot ' + num( tg[2].spot ) + ')' ] );
+			}
+			if ( op.sell_when && op.sell_when.stop_loss ) {
+				rcells.push( [ 'Stop Loss', '₹' + num( op.sell_when.stop_loss.premium ) + ' (spot ' + num( op.sell_when.stop_loss.spot ) + ')' ] );
+			}
+			rcells.push( [ 'IV / Days', op.iv_used + '% / ' + op.dte + 'd' ] );
+			rcells.forEach( function ( c ) {
+				var tile = el( 'div', 'fnosp-tile' );
+				tile.appendChild( el( 'div', 'k', esc( c[ 0 ] ) ) );
+				tile.appendChild( el( 'div', 'v', esc( c[ 1 ] ) ) );
+				recGrid.appendChild( tile );
+			} );
+			recBox.appendChild( recGrid );
+			recBox.appendChild( el( 'div', 'fnosp-rec-cond', '📌 ' + esc( op.buy_when.condition ) ) );
+			if ( op.sell_when && op.sell_when.time_exit ) {
+				recBox.appendChild( el( 'div', 'fnosp-rec-cond', '⏱ ' + esc( op.sell_when.time_exit ) ) );
+			}
+			if ( ! op.aligned ) {
+				recBox.appendChild( el( 'div', 'fnosp-rec-warn', '⚠️ ' + esc( op.align_note ) ) );
+			}
+			wrap.appendChild( recBox );
+		}
+
+		// Setup tiles (spot-based entry/SL/targets).
 		if ( data.setup ) {
+			wrap.appendChild( el( 'div', 'fnosp-section-title', 'Spot Levels (underlying)' ) );
 			var grid = el( 'div', 'fnosp-grid' );
 			var tiles = [
 				[ 'Entry', '₹' + num( data.setup.entry_low ) + ' – ₹' + num( data.setup.entry_high ) ],
@@ -177,38 +216,7 @@
 			wrap.appendChild( el( 'div', 'fnosp-error', 'AI: ' + esc( data.ai.error ) ) );
 		}
 
-		// Per-strike option plan.
-		if ( data.option_plan ) {
-			var op = data.option_plan;
-			wrap.appendChild( el( 'div', 'fnosp-section-title', 'Option Plan — ' + esc( op.label ) + ' (' + esc( op.moneyness ) + ', ' + esc( op.dte ) + 'd, IV ' + esc( op.iv_used ) + '%)' ) );
-			var box = el( 'div', 'fnosp-layman' );
-
-			box.appendChild( el( 'div', '', '<strong>Now:</strong> ' + esc( op.premium_source || 'estimate' ) + ' premium ≈ ₹' + esc( op.premium_now ) + ' · delta ' + esc( op.delta ) + ( op.aligned ? ' · <span style="color:#14794a">aligned with signal</span>' : ' · <span style="color:#b32424">counter-trend</span>' ) ) );
-
-			if ( op.buy_when ) {
-				box.appendChild( el( 'div', 'fnosp-layman-head', 'When to BUY' ) );
-				box.appendChild( el( 'div', '', esc( op.buy_when.condition ) + '<br>Entry zone: ' + esc( op.buy_when.entry_zone ) + '<br>Est. buy premium: ' + esc( op.buy_when.est_premium ) ) );
-			}
-
-			if ( op.sell_when ) {
-				box.appendChild( el( 'div', 'fnosp-layman-head', 'When to SELL' ) );
-				var st = el( 'table', 'fnosp-scores' );
-				st.innerHTML = '<tr><th>Target (underlying)</th><th>Est. premium</th><th></th></tr>';
-				op.sell_when.targets.forEach( function ( tg ) {
-					var row = el( 'tr' );
-					row.innerHTML = '<td>' + esc( tg.spot ) + '</td><td>₹' + esc( tg.premium ) + '</td><td>' + esc( tg.note ) + '</td>';
-					st.appendChild( row );
-				} );
-				box.appendChild( st );
-				if ( op.sell_when.stop_loss ) {
-					box.appendChild( el( 'div', '', '<strong>Stop:</strong> ' + esc( op.sell_when.stop_loss.note ) ) );
-				}
-				if ( op.sell_when.time_exit ) {
-					box.appendChild( el( 'div', '', '<strong>Time exit:</strong> ' + esc( op.sell_when.time_exit ) ) );
-				}
-			}
-			wrap.appendChild( box );
-		}
+		// (Option plan is now shown at the top as "Recommended Strike".)
 
 		// Data coverage notes (free provider transparency).
 		if ( data.data_notes && data.data_notes.length ) {

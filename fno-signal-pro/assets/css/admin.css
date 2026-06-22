@@ -71,3 +71,11 @@
 .fnosp-chart-wrap { background: #fff; border: 1px solid #dcdcde; border-radius: 10px; padding: 14px 16px; margin: 14px 0; }
 .fnosp-chart-title { font-weight: 700; font-size: 14px; margin-bottom: 8px; color: #1d2327; }
 #fnosp-tvchart { height: 460px; width: 100%; }
+
+
+.fnosp-rec { background: linear-gradient(135deg, #f0f9ff, #e6f0fb); border: 2px solid #2271b1; border-radius: 12px; padding: 14px 16px; margin: 12px 0; }
+.fnosp-rec-title { font-size: 16px; font-weight: 800; color: #11203f; margin-bottom: 8px; }
+.fnosp-rec .fnosp-tile { background: #fff; border: 1px solid #d4e3f3; }
+.fnosp-rec .fnosp-tile .v { color: #11203f; }
+.fnosp-rec-cond { font-size: 13px; color: #374151; margin-top: 6px; }
+.fnosp-rec-warn { font-size: 12px; color: #b32424; margin-top: 4px; }
