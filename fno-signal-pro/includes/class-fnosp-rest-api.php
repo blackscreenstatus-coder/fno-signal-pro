@@ -250,6 +250,12 @@ class FnOSP_Rest_Api {
 		}
 
 		$engine   = FnOSP_Plugin::make_engine();
+
+		// Extend time limit for the data fetch.
+		if ( function_exists( 'set_time_limit' ) ) {
+			@set_time_limit( 60 ); // phpcs:ignore
+		}
+
 		$gen_opts = array( 'use_ai' => $use_ai );
 		if ( $has_opt ) {
 			$gen_opts['strike']   = (float) $strike;

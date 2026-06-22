@@ -167,7 +167,7 @@ class FnOSP_Free_Data {
 		$response = wp_remote_get(
 			$url,
 			array(
-				'timeout' => 10,
+				'timeout' => 5,
 				'headers' => array(
 					'Accept'     => 'application/json',
 					'User-Agent' => 'Mozilla/5.0 (compatible; FnOSignalPro/1.0; +https://wordpress.org)',

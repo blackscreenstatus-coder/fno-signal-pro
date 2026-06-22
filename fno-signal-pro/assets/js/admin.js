@@ -89,16 +89,22 @@
 
 		var url = FNOSP_ADMIN.restUrl + '?instrument=' + encodeURIComponent(currentSym) + '&nocache=1';
 		fetch( url, { headers:{'X-WP-Nonce':FNOSP_ADMIN.nonce}, credentials:'same-origin' })
-			.then(function(r){ return r.json().then(function(j){return {ok:r.ok,body:j};}); })
+			.then(function(r){
+				var ct = r.headers.get('content-type') || '';
+				if ( ct.indexOf('json') === -1 ) {
+					return { ok:false, body:{ message:'Server returned non-JSON (HTTP ' + r.status + '). Your host may block outbound requests or PHP timed out. Try switching to Demo mode in Settings.' } };
+				}
+				return r.json().then(function(j){return {ok:r.ok,body:j};});
+			})
 			.then(function(res){
 				out.innerHTML = '';
-				if ( !res.ok ) { out.innerHTML = '<p class="fnosp-error">' + esc(res.body&&res.body.message?res.body.message:'Error') + '</p>'; return; }
+				if ( !res.ok ) { out.innerHTML = '<p class="fnosp-error">Error: ' + esc(res.body&&res.body.message?res.body.message:'Could not generate signal. Check Settings → Data Provider.') + '</p>'; return; }
 				out.appendChild( renderSignal(res.body) );
 				// Pulse the live dot
 				var dot = document.getElementById('fnosp-live-dot');
 				if (dot) { dot.classList.remove('pulse'); void dot.offsetWidth; dot.classList.add('pulse'); }
 			})
-			.catch(function(){ if(!silent) out.innerHTML = '<p class="fnosp-error">Network error. Retrying...</p>'; });
+			.catch(function(e){ if(!silent) out.innerHTML = '<p class="fnosp-error">Network error: ' + esc(String(e)) + '. Check if your server can make outbound HTTP calls, or switch to Demo mode in Settings.</p>'; });
 	}
 
 	function startAutoRefresh() {
@@ -129,7 +135,13 @@
 	function loadScan() {
 		var out = document.getElementById( 'fnosp-scan-result' );
 		fetch( FNOSP_ADMIN.scanUrl, { headers:{'X-WP-Nonce':FNOSP_ADMIN.nonce}, credentials:'same-origin' })
-			.then(function(r){ return r.json().then(function(j){return {ok:r.ok,body:j};}); })
+			.then(function(r){
+				var ct = r.headers.get('content-type') || '';
+				if ( ct.indexOf('json') === -1 ) {
+					return { ok:false, body:{ message:'Server returned non-JSON (HTTP ' + r.status + '). Scanner may have timed out.' } };
+				}
+				return r.json().then(function(j){return {ok:r.ok,body:j};});
+			})
 			.then(function(res){
 				if ( !res.ok ) { out.innerHTML = '<p class="fnosp-error">Scan failed. Try again in a moment.</p>'; return; }
 				var d = res.body;
