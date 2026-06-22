@@ -108,7 +108,7 @@ class FnOSP_Admin {
 		wp_enqueue_script(
 			'fnosp-admin',
 			FNOSP_PLUGIN_URL . 'assets/js/admin.js',
-			array( 'fnosp-tradingview' ),
+			array(), // NO dependency on tradingview — chart is optional
 			FNOSP_VERSION,
 			true
 		);

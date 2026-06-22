@@ -35,7 +35,7 @@ class FnOSP_Rest_Api {
 			array(
 				'methods'             => WP_REST_Server::READABLE,
 				'callback'            => array( $this, 'get_signal' ),
-				'permission_callback' => array( $this, 'permission' ),
+				'permission_callback' => '__return_true', // Always allow (admin check not needed for signal reads).
 				'args'                => array(
 					'instrument' => array(
 						'type'              => 'string',
@@ -84,7 +84,7 @@ class FnOSP_Rest_Api {
 			array(
 				'methods'             => WP_REST_Server::READABLE,
 				'callback'            => array( $this, 'get_instruments' ),
-				'permission_callback' => array( $this, 'permission' ),
+				'permission_callback' => '__return_true',
 			)
 		);
 
@@ -94,7 +94,7 @@ class FnOSP_Rest_Api {
 			array(
 				'methods'             => WP_REST_Server::READABLE,
 				'callback'            => array( $this, 'scan' ),
-				'permission_callback' => array( $this, 'permission' ),
+				'permission_callback' => '__return_true',
 				'args'                => array(
 					'nocache' => array(
 						'type'     => 'boolean',
@@ -107,8 +107,26 @@ class FnOSP_Rest_Api {
 
 		register_rest_route(
 			self::NS,
-			'/telegram-test',
+			'/health',
 			array(
+				'methods'             => WP_REST_Server::READABLE,
+				'callback'            => function () {
+					return rest_ensure_response( array(
+						'ok'       => true,
+						'plugin'   => 'fno-signal-pro',
+						'version'  => FNOSP_VERSION,
+						'provider' => ( new FnOSP_Settings() )->get( 'data_provider', 'demo' ),
+						'php'      => PHP_VERSION,
+						'time'     => gmdate( 'c' ),
+					) );
+				},
+				'permission_callback' => '__return_true',
+			)
+		);
+
+		register_rest_route(
+			self::NS,
+			'/telegram-test',			array(
 				'methods'             => WP_REST_Server::CREATABLE,
 				'callback'            => array( $this, 'telegram_test' ),
 				'permission_callback' => function () {

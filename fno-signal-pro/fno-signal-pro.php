@@ -62,10 +62,8 @@ spl_autoload_register(
 register_activation_hook(
 	__FILE__,
 	function () {
-		// Seed default settings if none exist.
-		if ( false === get_option( FNOSP_OPTION_KEY ) ) {
-			add_option( FNOSP_OPTION_KEY, FnOSP_Settings::default_settings() );
-		}
+		// Always overwrite with fresh defaults on activation to fix broken installs.
+		update_option( FNOSP_OPTION_KEY, FnOSP_Settings::default_settings() );
 		add_option( 'fnosp_db_version', FNOSP_VERSION );
 		flush_rewrite_rules();
 	}

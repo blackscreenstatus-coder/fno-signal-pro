@@ -22,7 +22,7 @@ class FnOSP_Settings {
 	public static function default_settings() {
 		return array(
 			// Market data provider.
-			'data_provider'      => 'free', // free | demo | custom_rest.
+			'data_provider'      => 'demo', // demo (works instantly) | free | custom_rest.
 			'data_api_url'       => '',
 			'data_api_key'       => '',
 			'free_fallback_demo' => 1, // If free source fails, fall back to demo data.
