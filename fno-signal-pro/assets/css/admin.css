@@ -61,3 +61,18 @@
 .fnosp-tg-ok { color:#14794a; font-weight:600; }
 .fnosp-tg-err { color:#b32424; font-weight:600; }
 .fnosp-help.card { max-width:760px; }
+
+
+/* Call & Put side-by-side cards */
+.fnosp-cp-wrap { margin: 12px 0; }
+.fnosp-cp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 600px) { .fnosp-cp-grid { grid-template-columns: 1fr; } }
+.fnosp-cp-box { border-radius: 10px; padding: 12px 14px; }
+.fnosp-cp-call { background: #e6f6ec; border: 2px solid #14794a; }
+.fnosp-cp-put { background: #fdeaea; border: 2px solid #b32424; }
+.fnosp-cp-head { font-weight: 800; font-size: 14px; margin-bottom: 4px; }
+.fnosp-cp-call .fnosp-cp-head { color: #14794a; }
+.fnosp-cp-put .fnosp-cp-head { color: #b32424; }
+.fnosp-cp-strike { font-size: 18px; font-weight: 700; color: #11203f; margin-bottom: 6px; }
+.fnosp-cp-row { font-size: 13px; color: #333; margin: 2px 0; }
+.fnosp-cp-cond { font-size: 12px; color: #555; margin-top: 6px; font-style: italic; }

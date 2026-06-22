@@ -137,25 +137,29 @@ class FnOSP_Signal_Engine {
 		// STEP 8: probability table.
 		$probabilities = $this->build_probability_table( $direction, $confidence, $setup, $snapshot );
 
-		// Optional: per-strike option plan (when a strike is requested).
+		// ALWAYS generate both CE and PE option plans (strike + Call + Put signals visible).
+		$step  = $this->strike_step( $snapshot['instrument'], $snapshot['ltp'] );
+		$atm   = round( $snapshot['ltp'] / $step ) * $step;
+		$dte   = isset( $opts['dte'] ) ? max( 1, (int) $opts['dte'] ) : 7;
+
 		$option_plan = null;
 		if ( ! empty( $opts['strike'] ) && (float) $opts['strike'] > 0 ) {
 			$option_plan = $this->build_option_plan(
-				$snapshot,
-				$direction,
-				(float) $opts['strike'],
+				$snapshot, $direction, (float) $opts['strike'],
 				isset( $opts['opt_type'] ) ? strtoupper( $opts['opt_type'] ) : 'CE',
-				isset( $opts['dte'] ) ? max( 1, (int) $opts['dte'] ) : 7,
-				isset( $opts['premium'] ) ? (float) $opts['premium'] : 0.0
+				$dte, isset( $opts['premium'] ) ? (float) $opts['premium'] : 0.0
 			);
-		} elseif ( 'NO TRADE' !== $direction ) {
-			// ALWAYS auto-generate an ATM option plan matching the signal direction.
-			$step  = $this->strike_step( $snapshot['instrument'], $snapshot['ltp'] );
-			$atm   = round( $snapshot['ltp'] / $step ) * $step;
-			$otype = ( 'BUY' === $direction ) ? 'CE' : 'PE';
-			$dte   = isset( $opts['dte'] ) ? max( 1, (int) $opts['dte'] ) : 7;
+		} else {
+			// Default: use the directional one as primary.
+			$otype = ( 'SELL' === $direction ) ? 'PE' : 'CE';
 			$option_plan = $this->build_option_plan( $snapshot, $direction, $atm, $otype, $dte, 0.0 );
 		}
+
+		// Always build both Call and Put at ATM.
+		$call_plan = $this->build_option_plan( $snapshot, 'BUY', $atm, 'CE', $dte, 0.0 );
+		$put_plan  = $this->build_option_plan( $snapshot, 'SELL', $atm, 'PE', $dte, 0.0 );
+
+
 
 		$layman = $this->build_layman_summary( $direction, $snapshot, $setup, $strategy, $confidence, $this->trend_label( $net ) );
 
@@ -184,6 +188,8 @@ class FnOSP_Signal_Engine {
 			'option_strategy' => $strategy,
 			'probabilities' => $probabilities,
 			'option_plan'   => $option_plan,
+			'call_plan'     => $call_plan,
+			'put_plan'      => $put_plan,
 			'final_verdict' => $this->final_verdict( $direction, $snapshot, $net ),
 			'layman_summary' => $layman,
 			'expert_advice' => $this->build_expert_advice( $direction, $snapshot, $layman, $option_plan ),

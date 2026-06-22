@@ -41,7 +41,7 @@
 		if ( data.option_plan ) {
 			var op = data.option_plan;
 			var rec = el( 'div', 'fnosp-rec' );
-			rec.innerHTML = '<div class="fnosp-rec-title">⚡ ' + esc(op.label) + ' — ' + esc(op.moneyness) + ' (delta ' + esc(op.delta) + ')</div>';
+			rec.innerHTML = '<div class="fnosp-rec-title">⚡ Recommended: ' + esc(op.label) + ' — ' + esc(op.moneyness) + ' (delta ' + esc(op.delta) + ')</div>';
 
 			var grid = el( 'div', 'fnosp-grid' );
 			var cells = [
@@ -62,8 +62,38 @@
 			rec.appendChild( el('div','fnosp-rec-cond','📌 '+esc(op.buy_when.condition)) );
 			if ( op.sell_when && op.sell_when.time_exit ) rec.appendChild( el('div','fnosp-rec-cond','⏱ '+esc(op.sell_when.time_exit)) );
 			wrap.appendChild( rec );
-		} else if ( data.signal === 'NO TRADE' ) {
-			wrap.appendChild( el('div','fnosp-rec','<div class="fnosp-rec-title">⏸ No high-confidence trade right now</div><p>Wait for a clear setup. Not trading is a smart decision.</p>') );
+		}
+
+		// 📊 CALL & PUT SIGNALS — always shown side by side
+		if ( data.call_plan || data.put_plan ) {
+			var cpWrap = el( 'div', 'fnosp-cp-wrap' );
+			cpWrap.appendChild( el( 'div', 'fnosp-section-title', '📊 F&O Strike Price — Call & Put Signals' ) );
+			var cpGrid = el( 'div', 'fnosp-cp-grid' );
+
+			if ( data.call_plan ) {
+				var cp = data.call_plan;
+				var cBox = el( 'div', 'fnosp-cp-box fnosp-cp-call' );
+				cBox.innerHTML = '<div class="fnosp-cp-head">🟢 CALL (CE)</div>'
+					+ '<div class="fnosp-cp-strike">' + esc(cp.label) + '</div>'
+					+ '<div class="fnosp-cp-row">Entry: <strong>₹' + num(cp.premium_now) + '</strong></div>'
+					+ ( cp.sell_when && cp.sell_when.targets ? '<div class="fnosp-cp-row">T1 ₹' + num(cp.sell_when.targets[0].premium) + ' · T2 ₹' + num(cp.sell_when.targets[1].premium) + ' · T3 ₹' + num(cp.sell_when.targets[2].premium) + '</div>' : '' )
+					+ ( cp.sell_when && cp.sell_when.stop_loss ? '<div class="fnosp-cp-row">SL ₹' + num(cp.sell_when.stop_loss.premium) + '</div>' : '' )
+					+ '<div class="fnosp-cp-cond">' + esc(cp.buy_when.condition) + '</div>';
+				cpGrid.appendChild( cBox );
+			}
+			if ( data.put_plan ) {
+				var pp = data.put_plan;
+				var pBox = el( 'div', 'fnosp-cp-box fnosp-cp-put' );
+				pBox.innerHTML = '<div class="fnosp-cp-head">🔴 PUT (PE)</div>'
+					+ '<div class="fnosp-cp-strike">' + esc(pp.label) + '</div>'
+					+ '<div class="fnosp-cp-row">Entry: <strong>₹' + num(pp.premium_now) + '</strong></div>'
+					+ ( pp.sell_when && pp.sell_when.targets ? '<div class="fnosp-cp-row">T1 ₹' + num(pp.sell_when.targets[0].premium) + ' · T2 ₹' + num(pp.sell_when.targets[1].premium) + ' · T3 ₹' + num(pp.sell_when.targets[2].premium) + '</div>' : '' )
+					+ ( pp.sell_when && pp.sell_when.stop_loss ? '<div class="fnosp-cp-row">SL ₹' + num(pp.sell_when.stop_loss.premium) + '</div>' : '' )
+					+ '<div class="fnosp-cp-cond">' + esc(pp.buy_when.condition) + '</div>';
+				cpGrid.appendChild( pBox );
+			}
+			cpWrap.appendChild( cpGrid );
+			wrap.appendChild( cpWrap );
 		}
 
 		// Expert Advice footer
