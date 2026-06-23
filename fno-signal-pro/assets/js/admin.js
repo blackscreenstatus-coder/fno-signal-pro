@@ -18,13 +18,19 @@
 	// Build a TradingView symbol for an F&O strike (e.g. "NSE:BANKNIFTY25JUNFUT" or nearest option).
 	// TradingView free doesn't have individual option contracts, so we show the Futures contract or underlying.
 	function tvFnoSymbol( instrument, optionPlan ) {
-		// TradingView free tier doesn't support individual NSE option strikes (23550CE etc).
-		// Best we can do: show the futures contract for the instrument.
-		var m = { NIFTY:'NSE:NIFTY1!', NIFTY50:'NSE:NIFTY1!', BANKNIFTY:'NSE:BANKNIFTY1!', FINNIFTY:'NSE:CNXFINANCE', MIDCPNIFTY:'NSE:NIFTYMIDSELECT', SENSEX:'BSE:SENSEX' };
+		// TradingView widget-compatible symbols for Indian markets.
+		var m = {
+			NIFTY: 'INDEX:NIFTY50',
+			NIFTY50: 'INDEX:NIFTY50',
+			BANKNIFTY: 'INDEX:BANKNIFTY',
+			FINNIFTY: 'INDEX:NIFTY_FIN_SERVICE',
+			MIDCPNIFTY: 'INDEX:NIFTY_MID_SELECT',
+			SENSEX: 'INDEX:SENSEX'
+		};
 		var sym = ( instrument || '' ).toUpperCase();
 		if ( m[ sym ] ) return m[ sym ];
-		// For stocks, show the stock futures (continuous contract).
-		return 'NSE:' + sym + '1!';
+		// For stocks, use NSE:<ticker> format.
+		return 'NSE:' + sym;
 	}
 
 	var currentChartSym = '';
