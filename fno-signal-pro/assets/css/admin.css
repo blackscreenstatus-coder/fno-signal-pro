@@ -84,3 +84,6 @@
 /* Advanced analytics */
 .fnosp-adv-wrap { margin: 12px 0; padding: 12px 14px; background: #fafbfc; border: 1px solid #e2e5ea; border-radius: 10px; }
 .fnosp-adv-wrap .fnosp-tile { background: #fff; }
+
+
+.fnosp-premium-note { font-size: 11px; color: #888; font-style: italic; margin-top: 6px; }
