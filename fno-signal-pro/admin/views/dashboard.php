@@ -15,14 +15,15 @@ $default     = $settings->get( 'default_instrument', 'NIFTY' );
 $ai_ready    = $settings->ai_ready();
 $index_set   = array( 'NIFTY', 'NIFTY50', 'BANKNIFTY', 'FINNIFTY', 'SENSEX', 'MIDCPNIFTY' );
 $idx_list    = array();
-$stock_list  = array();
 foreach ( $instruments as $sym ) {
 	if ( in_array( strtoupper( $sym ), $index_set, true ) ) {
 		$idx_list[] = $sym;
-	} else {
-		$stock_list[] = $sym;
 	}
 }
+
+// Get today's top stocks from the scan universe for the dropdown.
+$scan_universe = (array) $settings->get( 'scan_universe', array() );
+$top_stocks    = array_slice( $scan_universe, 0, 10 ); // Show top 10 from universe in dropdown.
 ?>
 <div class="wrap fnosp-wrap">
 	<h1 class="fnosp-title">
@@ -41,10 +42,10 @@ foreach ( $instruments as $sym ) {
 					<?php endforeach; ?>
 				</optgroup>
 			<?php endif; ?>
-			<?php if ( ! empty( $stock_list ) ) : ?>
-				<optgroup label="<?php esc_attr_e( 'Stocks', 'fno-signal-pro' ); ?>">
-					<?php foreach ( $stock_list as $sym ) : ?>
-						<option value="<?php echo esc_attr( $sym ); ?>" <?php selected( $sym, $default ); ?>><?php echo esc_html( $sym ); ?></option>
+			<?php if ( ! empty( $top_stocks ) ) : ?>
+				<optgroup label="<?php esc_attr_e( 'Top Stocks', 'fno-signal-pro' ); ?>">
+					<?php foreach ( $top_stocks as $sym ) : ?>
+						<option value="<?php echo esc_attr( $sym ); ?>"><?php echo esc_html( $sym ); ?></option>
 					<?php endforeach; ?>
 				</optgroup>
 			<?php endif; ?>

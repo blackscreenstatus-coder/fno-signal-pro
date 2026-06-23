@@ -222,6 +222,26 @@
 			.then(function(res){
 				if ( !res.ok ) { out.innerHTML = '<p class="fnosp-error">Scan failed. Try again in a moment.</p>'; return; }
 				var d = res.body;
+
+				// Update the "Top Stocks" optgroup in the dropdown with today's actual top 5.
+				var instEl = document.getElementById('fnosp-instrument');
+				if ( instEl ) {
+					var existingOg = instEl.querySelector('optgroup[label="Top Stocks"]');
+					if ( existingOg ) instEl.removeChild( existingOg );
+					var topPicks = d.buy.concat( d.sell ).sort(function(a,b){ return b.confidence - a.confidence; }).slice(0, 5);
+					if ( topPicks.length ) {
+						var og = document.createElement('optgroup');
+						og.label = 'Top Stocks (Today)';
+						topPicks.forEach(function(p){
+							var o = document.createElement('option');
+							o.value = p.instrument;
+							o.textContent = p.instrument + ' (' + p.signal + ' ' + p.confidence + '%)';
+							og.appendChild(o);
+						});
+						instEl.appendChild(og);
+					}
+				}
+
 				var html = '<div class="fnosp-scan-meta">Scanned ' + esc(d.scanned) + ' symbols · VIX ' + esc(d.macro.vix) + ' · FII ' + (d.macro.fii_net>=0?'+':'') + esc(d.macro.fii_net) + ' Cr</div>';
 
 				html += '<div class="fnosp-section-title" style="color:#14794a">🟢 BUY (' + d.buy.length + ')</div>';
