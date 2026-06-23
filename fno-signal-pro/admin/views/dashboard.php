@@ -65,7 +65,7 @@ foreach ( $instruments as $sym ) {
 	<!-- Live chart -->
 	<?php if ( (int) $settings->get( 'show_chart', 1 ) === 1 ) : ?>
 	<div class="fnosp-chart-wrap">
-		<div class="fnosp-chart-title"><?php esc_html_e( 'Live Chart', 'fno-signal-pro' ); ?></div>
+		<div class="fnosp-chart-title"><?php esc_html_e( 'Live F&O Chart (Futures)', 'fno-signal-pro' ); ?></div>
 		<div id="fnosp-tvchart"></div>
 	</div>
 	<?php endif; ?>

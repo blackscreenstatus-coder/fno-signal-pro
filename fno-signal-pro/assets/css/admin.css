@@ -76,3 +76,6 @@
 .fnosp-cp-strike { font-size: 18px; font-weight: 700; color: #11203f; margin-bottom: 6px; }
 .fnosp-cp-row { font-size: 13px; color: #333; margin: 2px 0; }
 .fnosp-cp-cond { font-size: 12px; color: #555; margin-top: 6px; font-style: italic; }
+
+
+.fnosp-locked-badge { font-size: 11px; background: #f0f0f1; color: #555; padding: 2px 8px; border-radius: 4px; margin-left: 8px; }

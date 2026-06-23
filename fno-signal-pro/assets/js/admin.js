@@ -14,11 +14,28 @@
 		sym = ( sym || '' ).toUpperCase();
 		return m[ sym ] || ( sym.indexOf( ':' ) !== -1 ? sym : 'NSE:' + sym );
 	}
-	function renderChart( sym ) {
+
+	// Build a TradingView symbol for an F&O strike (e.g. "NSE:BANKNIFTY25JUNFUT" or nearest option).
+	// TradingView free doesn't have individual option contracts, so we show the Futures contract or underlying.
+	function tvFnoSymbol( instrument, optionPlan ) {
+		// TradingView free tier doesn't support individual NSE option strikes (23550CE etc).
+		// Best we can do: show the futures contract for the instrument.
+		var m = { NIFTY:'NSE:NIFTY1!', NIFTY50:'NSE:NIFTY1!', BANKNIFTY:'NSE:BANKNIFTY1!', FINNIFTY:'NSE:CNXFINANCE', MIDCPNIFTY:'NSE:NIFTYMIDSELECT', SENSEX:'BSE:SENSEX' };
+		var sym = ( instrument || '' ).toUpperCase();
+		if ( m[ sym ] ) return m[ sym ];
+		// For stocks, show the stock futures (continuous contract).
+		return 'NSE:' + sym + '1!';
+	}
+
+	var currentChartSym = '';
+	function renderChart( sym, optionPlan ) {
 		var h = document.getElementById( 'fnosp-tvchart' );
 		if ( !h || typeof TradingView === 'undefined' ) return;
+		var newSym = tvFnoSymbol( sym, optionPlan );
+		if ( newSym === currentChartSym ) return; // Don't re-render same chart.
+		currentChartSym = newSym;
 		h.innerHTML = '';
-		try { new TradingView.widget({ autosize:true, symbol:tvSymbol(sym), interval:'15', timezone:'Asia/Kolkata', theme:FNOSP_ADMIN.chartTheme==='dark'?'dark':'light', style:'1', locale:'en', container_id:'fnosp-tvchart', hide_side_toolbar:false, allow_symbol_change:true, studies:['STD;EMA','RSI@tv-basicstudies'] }); } catch(e){}
+		try { new TradingView.widget({ autosize:true, symbol:newSym, interval:'15', timezone:'Asia/Kolkata', theme:FNOSP_ADMIN.chartTheme==='dark'?'dark':'light', style:'1', locale:'en', container_id:'fnosp-tvchart', hide_side_toolbar:false, allow_symbol_change:true, studies:['STD;EMA','RSI@tv-basicstudies'] }); } catch(e){}
 	}
 
 	// --- Main signal renderer ---
@@ -29,7 +46,8 @@
 		var head = el( 'div', 'fnosp-card-head' );
 		head.innerHTML = '<span class="fnosp-badge ' + badgeClass(data.signal) + '">' + esc(data.signal) + '</span>'
 			+ ' <strong>' + esc(data.instrument) + '</strong> @ ₹' + esc(data.ltp)
-			+ '<span class="fnosp-conf">Confidence <strong>' + esc(data.confidence) + '%</strong> · ' + esc(data.trend_label) + '</span>';
+			+ '<span class="fnosp-conf">Confidence <strong>' + esc(data.confidence) + '%</strong> · ' + esc(data.trend_label) + '</span>'
+			+ '<span class="fnosp-locked-badge">🔒 Levels locked</span>';
 		wrap.appendChild( head );
 
 		// Confidence meter
@@ -111,30 +129,53 @@
 	// --- Fetch + render signal ---
 	var currentSym = '';
 	var refreshTimer = null;
+	var lockedSignal = null; // Stores the LOCKED signal so levels don't fluctuate.
 
 	function fetchSignal( sym, silent ) {
 		currentSym = sym || currentSym;
 		var out = document.getElementById( 'fnosp-result' );
-		if ( !silent ) out.innerHTML = '<p class="fnosp-loading">' + FNOSP_ADMIN.i18n.loading + '</p>';
+		if ( !silent ) { out.innerHTML = '<p class="fnosp-loading">' + FNOSP_ADMIN.i18n.loading + '</p>'; lockedSignal = null; }
 
 		var url = FNOSP_ADMIN.restUrl + '?instrument=' + encodeURIComponent(currentSym) + '&nocache=1';
 		fetch( url, { headers:{'X-WP-Nonce':FNOSP_ADMIN.nonce}, credentials:'same-origin' })
 			.then(function(r){
 				var ct = r.headers.get('content-type') || '';
 				if ( ct.indexOf('json') === -1 ) {
-					return { ok:false, body:{ message:'Server returned non-JSON (HTTP ' + r.status + '). Your host may block outbound requests or PHP timed out. Try switching to Demo mode in Settings.' } };
+					return { ok:false, body:{ message:'Server returned non-JSON (HTTP ' + r.status + '). Try switching to Demo mode in Settings.' } };
 				}
 				return r.json().then(function(j){return {ok:r.ok,body:j};});
 			})
 			.then(function(res){
+				if ( !res.ok ) { out.innerHTML = '<p class="fnosp-error">Error: ' + esc(res.body&&res.body.message?res.body.message:'Could not generate signal.') + '</p>'; return; }
+
+				var data = res.body;
+
+				// LOCK LOGIC: Only update the displayed signal if:
+				// 1. No locked signal yet (first load), OR
+				// 2. The direction has CHANGED (BUY->SELL, SELL->NO TRADE, etc.), OR
+				// 3. User manually switched instrument (silent=false on first call).
+				if ( !lockedSignal || lockedSignal.signal !== data.signal || lockedSignal.instrument !== data.instrument ) {
+					lockedSignal = data;
+				} else {
+					// Direction same — only update LTP (live price), keep T1/T2/T3/SL locked.
+					lockedSignal.ltp = data.ltp;
+					lockedSignal.confidence = data.confidence;
+					lockedSignal.generated_at = data.generated_at;
+				}
+
 				out.innerHTML = '';
-				if ( !res.ok ) { out.innerHTML = '<p class="fnosp-error">Error: ' + esc(res.body&&res.body.message?res.body.message:'Could not generate signal. Check Settings → Data Provider.') + '</p>'; return; }
-				out.appendChild( renderSignal(res.body) );
-				// Pulse the live dot
+				out.appendChild( renderSignal( lockedSignal ) );
+
+				// Update chart to show futures of the recommended strike's instrument.
+				if ( document.getElementById('fnosp-tvchart') ) {
+					renderChart( lockedSignal.instrument, lockedSignal.option_plan );
+				}
+
+				// Pulse the live dot.
 				var dot = document.getElementById('fnosp-live-dot');
 				if (dot) { dot.classList.remove('pulse'); void dot.offsetWidth; dot.classList.add('pulse'); }
 			})
-			.catch(function(e){ if(!silent) out.innerHTML = '<p class="fnosp-error">Network error: ' + esc(String(e)) + '. Check if your server can make outbound HTTP calls, or switch to Demo mode in Settings.</p>'; });
+			.catch(function(e){ if(!silent) out.innerHTML = '<p class="fnosp-error">Network error: ' + esc(String(e)) + '</p>'; });
 	}
 
 	function startAutoRefresh() {
@@ -196,8 +237,8 @@
 		var input = document.getElementById('fnosp-search');
 		var val = (input.value || '').trim().toUpperCase();
 		if ( !val ) return;
+		lockedSignal = null; // Reset lock for new search.
 		fetchSignal( val, false );
-		renderChart( val );
 		input.value = '';
 	}
 
@@ -220,14 +261,13 @@
 		fetchSignal( currentSym, false );
 		startAutoRefresh();
 
-		// Chart
-		if ( document.getElementById('fnosp-tvchart') ) renderChart( currentSym );
+		// Chart — will be rendered/updated by fetchSignal after data arrives.
 
 		// Instrument change
 		if ( instEl ) {
 			instEl.addEventListener( 'change', function() {
+				lockedSignal = null; // Reset lock on instrument change.
 				fetchSignal( instEl.value, false );
-				renderChart( instEl.value );
 			});
 		}
 
