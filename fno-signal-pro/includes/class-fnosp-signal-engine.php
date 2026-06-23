@@ -403,6 +403,7 @@ class FnOSP_Signal_Engine {
 			'type'          => $type,
 			'label'         => number_format_i18n( $strike, 0 ) . ' ' . $type,
 			'dte'           => $dte,
+			'expiry_date'   => gmdate( 'd M Y', time() + $dte * 86400 ),
 			'iv_used'       => round( $iv * 100, 1 ),
 			'moneyness'     => $moneyness,
 			'delta'         => $delta,

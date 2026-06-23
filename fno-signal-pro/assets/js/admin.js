@@ -94,7 +94,7 @@
 			var grid = el( 'div', 'fnosp-grid' );
 			var cells = [
 				['Current Premium (est.)', '₹' + num(op.premium_now) + ' *'],
-				['IV / Expiry', num(op.iv_used) + '% / ' + num(op.dte) + ' days']
+				['IV / Expiry', num(op.iv_used) + '% / ' + esc(op.expiry_date || (op.dte + ' days'))]
 			];
 
 			if ( isConfirmed ) {
