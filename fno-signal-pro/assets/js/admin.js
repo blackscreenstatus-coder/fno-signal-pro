@@ -41,7 +41,25 @@
 		if ( newSym === currentChartSym ) return; // Don't re-render same chart.
 		currentChartSym = newSym;
 		h.innerHTML = '';
-		try { new TradingView.widget({ autosize:true, symbol:newSym, interval:'15', timezone:'Asia/Kolkata', theme:FNOSP_ADMIN.chartTheme==='dark'?'dark':'light', style:'1', locale:'en', container_id:'fnosp-tvchart', hide_side_toolbar:false, allow_symbol_change:true, studies:['STD;EMA','RSI@tv-basicstudies'] }); } catch(e){}
+		try { new TradingView.widget({
+			autosize: true,
+			symbol: newSym,
+			interval: '15',
+			timezone: 'Asia/Kolkata',
+			theme: ( FNOSP_ADMIN.chartTheme === 'dark' ? 'dark' : 'light' ),
+			style: '1',
+			locale: 'en',
+			container_id: 'fnosp-tvchart',
+			hide_side_toolbar: false,
+			allow_symbol_change: true,
+			studies: ['STD;EMA', 'RSI@tv-basicstudies'],
+			// Enable TradingView login so users with paid accounts get real-time NSE data.
+			show_popup_button: true,
+			popup_width: '1000',
+			popup_height: '650',
+			enable_publishing: false,
+			save_image: true
+		}); } catch(e){}
 	}
 
 	// --- Main signal renderer ---
