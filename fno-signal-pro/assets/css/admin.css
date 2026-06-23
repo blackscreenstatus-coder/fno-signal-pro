@@ -79,3 +79,8 @@
 
 
 .fnosp-locked-badge { font-size: 11px; background: #f0f0f1; color: #555; padding: 2px 8px; border-radius: 4px; margin-left: 8px; }
+
+
+/* Advanced analytics */
+.fnosp-adv-wrap { margin: 12px 0; padding: 12px 14px; background: #fafbfc; border: 1px solid #e2e5ea; border-radius: 10px; }
+.fnosp-adv-wrap .fnosp-tile { background: #fff; }

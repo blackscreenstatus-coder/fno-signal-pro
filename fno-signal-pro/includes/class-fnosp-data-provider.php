@@ -273,8 +273,8 @@ class FnOSP_Data_Provider {
 	 */
 	private static function demo_base_price( $instrument ) {
 		$map = array(
-			'NIFTY'     => 23500,
-			'BANKNIFTY' => 51000,
+			'NIFTY'     => 24100,
+			'BANKNIFTY' => 57900,
 			'FINNIFTY'  => 23200,
 			'SENSEX'    => 77500,
 			'MIDCPNIFTY'=> 12200,

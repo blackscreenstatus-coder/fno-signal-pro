@@ -63,14 +63,6 @@ $top_stocks    = array_slice( $scan_universe, 0, 10 ); // Show top 10 from unive
 		<p class="fnosp-loading"><?php esc_html_e( 'Loading signal...', 'fno-signal-pro' ); ?></p>
 	</div>
 
-	<!-- Live chart -->
-	<?php if ( (int) $settings->get( 'show_chart', 1 ) === 1 ) : ?>
-	<div class="fnosp-chart-wrap">
-		<div class="fnosp-chart-title"><?php esc_html_e( 'Live F&O Chart (Futures)', 'fno-signal-pro' ); ?></div>
-		<div id="fnosp-tvchart"></div>
-	</div>
-	<?php endif; ?>
-
 	<!-- Today's Top Picks (auto-loaded) -->
 	<div class="fnosp-card" style="margin-top:16px;">
 		<div class="fnosp-card-head"><strong><?php esc_html_e( "Today's Top Picks — Buy & Sell", 'fno-signal-pro' ); ?></strong></div>

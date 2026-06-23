@@ -170,6 +170,9 @@ class FnOSP_Signal_Engine {
 
 		$layman = $this->build_layman_summary( $direction, $snapshot, $setup, $strategy, $confidence, $this->trend_label( $net ) );
 
+		// ADVANCED FEATURES
+		$advanced = $this->build_advanced_features( $snapshot, $direction, $net, $setup );
+
 		$result = array(
 			'instrument'    => $snapshot['instrument'],
 			'is_fno'        => $is_fno,
@@ -201,6 +204,7 @@ class FnOSP_Signal_Engine {
 			'final_verdict' => $this->final_verdict( $direction, $snapshot, $net ),
 			'layman_summary' => $layman,
 			'expert_advice' => $this->build_expert_advice( $direction, $snapshot, $layman, $option_plan ),
+			'advanced'      => $advanced,
 			'data_notes'    => isset( $snapshot['data_notes'] ) ? (array) $snapshot['data_notes'] : array(),
 			'snapshot'      => $snapshot,
 			'ai'            => null,
@@ -219,6 +223,86 @@ class FnOSP_Signal_Engine {
 		}
 
 		return $result;
+	}
+
+	// ---------------------------------------------------------------------
+	// ADVANCED FEATURES — 5 powerful analytics.
+	// ---------------------------------------------------------------------
+	private function build_advanced_features( $s, $direction, $net, $setup ) {
+		$ltp = (float) $s['ltp'];
+		$atr = max( 0.01, (float) $s['atr'] );
+
+		// 1. Volatility Squeeze Detector (BB width relative to price).
+		$bb_width  = ( (float) $s['bb_upper'] - (float) $s['bb_lower'] ) / max( 1, $ltp ) * 100;
+		$squeeze   = $bb_width < 1.5;
+		$vol_state = $squeeze ? 'SQUEEZE (expect big move soon)' : ( $bb_width > 4 ? 'Expanded (trending)' : 'Normal' );
+
+		// 2. Support & Resistance (Pivot Points: Classic).
+		$h = (float) $s['ohlc']['high'];
+		$l = (float) $s['ohlc']['low'];
+		$c = (float) $s['ohlc']['close'];
+		$pivot = round( ( $h + $l + $c ) / 3, 2 );
+		$r1    = round( 2 * $pivot - $l, 2 );
+		$r2    = round( $pivot + ( $h - $l ), 2 );
+		$s1    = round( 2 * $pivot - $h, 2 );
+		$s2    = round( $pivot - ( $h - $l ), 2 );
+
+		// 3. Momentum Strength (0–100 gauge based on RSI + MACD + trend alignment).
+		$rsi_comp  = min( 100, max( 0, (float) $s['rsi'] ) );
+		$macd_comp = $s['macd_hist'] > 0 ? min( 100, 50 + abs( (float) $s['macd_hist'] ) * 3 ) : max( 0, 50 - abs( (float) $s['macd_hist'] ) * 3 );
+		$trend_comp = ( $ltp > (float) $s['ema21'] ) ? 70 : 30;
+		$momentum_strength = (int) round( ( $rsi_comp * 0.4 + $macd_comp * 0.35 + $trend_comp * 0.25 ) );
+		$mom_label = $momentum_strength >= 70 ? 'Strong' : ( $momentum_strength >= 45 ? 'Moderate' : 'Weak' );
+
+		// 4. Risk per Trade (₹ per lot, based on SL distance).
+		$lot_size    = isset( $s['lot_size'] ) ? (int) $s['lot_size'] : 1;
+		$risk_per_unit = $setup ? (float) $setup['risk_per_unit'] : $atr * 1.2;
+		$risk_per_lot  = round( $risk_per_unit * $lot_size, 2 );
+		$reward_per_lot = $setup ? round( (float) $setup['reward_per_unit'] * $lot_size, 2 ) : round( $atr * 2 * $lot_size, 2 );
+
+		// 5. Signal Strength Trend (is the bias strengthening or stable).
+		// Compare current net to what a mild neutral would be.
+		$strength_trend = 'Stable';
+		if ( abs( $net ) > 50 ) {
+			$strength_trend = 'Very Strong';
+		} elseif ( abs( $net ) > 30 ) {
+			$strength_trend = 'Strengthening';
+		} elseif ( abs( $net ) < 10 ) {
+			$strength_trend = 'Weak / Indecisive';
+		}
+
+		return array(
+			'volatility_squeeze' => array(
+				'label'    => $vol_state,
+				'squeeze'  => $squeeze,
+				'bb_width' => round( $bb_width, 2 ),
+				'note'     => $squeeze ? 'Bollinger Bands are tight — a breakout/breakdown is likely soon. Wait for direction confirmation before entry.' : 'Normal volatility range.',
+			),
+			'support_resistance' => array(
+				'pivot' => $pivot,
+				'r1'    => $r1,
+				'r2'    => $r2,
+				's1'    => $s1,
+				's2'    => $s2,
+			),
+			'momentum_strength' => array(
+				'value' => $momentum_strength,
+				'label' => $mom_label,
+				'note'  => sprintf( 'Momentum gauge: %d/100 (%s). RSI %.1f, MACD hist %+.1f.', $momentum_strength, $mom_label, $s['rsi'], $s['macd_hist'] ),
+			),
+			'risk_calculator' => array(
+				'lot_size'        => $lot_size,
+				'risk_per_unit'   => round( $risk_per_unit, 2 ),
+				'risk_per_lot'    => $risk_per_lot,
+				'reward_per_lot'  => $reward_per_lot,
+				'note'            => sprintf( 'If SL hits, you lose ₹%.0f per lot (%d units × ₹%.2f). Potential reward ₹%.0f per lot.', $risk_per_lot, $lot_size, $risk_per_unit, $reward_per_lot ),
+			),
+			'signal_strength' => array(
+				'label'   => $strength_trend,
+				'net_bias' => round( $net, 1 ),
+				'note'    => sprintf( 'Signal strength: %s (net bias %+.1f/100).', $strength_trend, $net ),
+			),
+		);
 	}
 
 	// ---------------------------------------------------------------------

@@ -7,6 +7,7 @@
 	function esc( s ) { var d = document.createElement( 'div' ); d.textContent = ( s == null ) ? '' : String( s ); return d.innerHTML; }
 	function num( v ) { return ( v == null || v === '' ) ? '-' : v; }
 	function badgeClass( s ) { return s === 'BUY' ? 'buy' : ( s === 'SELL' ? 'sell' : 'notrade' ); }
+	function makeTile( k, v ) { var t = el('div','fnosp-tile'); t.innerHTML = '<div class="k">' + esc(k) + '</div><div class="v">' + esc(v) + '</div>'; return t; }
 
 	// --- TradingView symbol mapping ---
 	function tvSymbol( sym ) {
@@ -161,6 +162,44 @@
 			wrap.appendChild( el('div','fnosp-rec','<div class="fnosp-rec-title">📈 ' + esc(data.instrument) + ' @ ₹' + esc(data.ltp) + '</div><p>No clear stock trade right now. Wait for a higher-confidence setup.</p>') );
 		}
 
+		// 🔬 ADVANCED FEATURES
+		if ( data.advanced ) {
+			var af = data.advanced;
+			var advWrap = el( 'div', 'fnosp-adv-wrap' );
+			advWrap.appendChild( el( 'div', 'fnosp-section-title', '🔬 Advanced Analytics' ) );
+			var advGrid = el( 'div', 'fnosp-grid' );
+
+			// Volatility Squeeze
+			var vsq = af.volatility_squeeze;
+			advGrid.appendChild( makeTile( '💥 Volatility', vsq.label + ' (BB ' + vsq.bb_width + '%)' ) );
+
+			// Momentum Strength
+			var mom = af.momentum_strength;
+			advGrid.appendChild( makeTile( '⚡ Momentum', mom.value + '/100 — ' + mom.label ) );
+
+			// Signal Strength
+			var sig = af.signal_strength;
+			advGrid.appendChild( makeTile( '📶 Signal Power', sig.label + ' (' + sig.net_bias + ')' ) );
+
+			// Risk Calculator
+			var rc = af.risk_calculator;
+			advGrid.appendChild( makeTile( '🎯 Risk/Lot', '₹' + num(rc.risk_per_lot) + ' risk · ₹' + num(rc.reward_per_lot) + ' reward' ) );
+
+			// Support & Resistance
+			var sr = af.support_resistance;
+			advGrid.appendChild( makeTile( '📊 Pivot', '₹' + num(sr.pivot) ) );
+			advGrid.appendChild( makeTile( '🟢 S1/S2', '₹' + num(sr.s1) + ' / ₹' + num(sr.s2) ) );
+			advGrid.appendChild( makeTile( '🔴 R1/R2', '₹' + num(sr.r1) + ' / ₹' + num(sr.r2) ) );
+
+			// Squeeze warning
+			if ( vsq.squeeze ) {
+				advGrid.appendChild( makeTile( '⚠️ Alert', vsq.note ) );
+			}
+
+			advWrap.appendChild( advGrid );
+			wrap.appendChild( advWrap );
+		}
+
 		// Expert Advice footer
 		if ( data.expert_advice ) {
 			var adv = el('div','fnosp-expert');
@@ -212,11 +251,6 @@
 
 				out.innerHTML = '';
 				out.appendChild( renderSignal( lockedSignal ) );
-
-				// Update chart to show futures of the recommended strike's instrument.
-				if ( document.getElementById('fnosp-tvchart') ) {
-					renderChart( lockedSignal.instrument, lockedSignal.option_plan );
-				}
 
 				// Pulse the live dot.
 				var dot = document.getElementById('fnosp-live-dot');
