@@ -61,8 +61,8 @@
 		meter.innerHTML = '<span style="width:' + Math.min(100, data.confidence) + '%"></span>';
 		wrap.appendChild( meter );
 
-		// ⚡ AUTO RECOMMENDED STRIKE (prominent, no manual input)
-		if ( data.option_plan ) {
+		// ⚡ F&O STRIKE SIGNALS (only for indices)
+		if ( data.is_fno && data.option_plan ) {
 			var op = data.option_plan;
 			var rec = el( 'div', 'fnosp-rec' );
 			rec.innerHTML = '<div class="fnosp-rec-title">⚡ Recommended: ' + esc(op.label) + ' — ' + esc(op.moneyness) + ' (delta ' + esc(op.delta) + ')</div>';
@@ -88,8 +88,8 @@
 			wrap.appendChild( rec );
 		}
 
-		// 📊 CALL & PUT SIGNALS — always shown side by side
-		if ( data.call_plan || data.put_plan ) {
+		// 📊 CALL & PUT (only for F&O indices)
+		if ( data.is_fno && ( data.call_plan || data.put_plan ) ) {
 			var cpWrap = el( 'div', 'fnosp-cp-wrap' );
 			cpWrap.appendChild( el( 'div', 'fnosp-section-title', '📊 F&O Strike Price — Call & Put Signals' ) );
 			var cpGrid = el( 'div', 'fnosp-cp-grid' );
@@ -118,6 +118,29 @@
 			}
 			cpWrap.appendChild( cpGrid );
 			wrap.appendChild( cpWrap );
+		}
+
+		// 📈 STOCK PRICE SIGNAL (for equities — no options, just spot price levels)
+		if ( !data.is_fno && data.setup ) {
+			var s = data.setup;
+			var stk = el( 'div', 'fnosp-rec' );
+			stk.innerHTML = '<div class="fnosp-rec-title">📈 Stock Price Signal — ' + esc(data.instrument) + '</div>';
+			var sg = el( 'div', 'fnosp-grid' );
+			var sc = [
+				['Current Price', '₹' + num(data.ltp)],
+				['Entry Range', '₹' + num(s.entry_low) + ' – ₹' + num(s.entry_high)],
+				['Target 1', '₹' + num(s.target1)],
+				['Target 2', '₹' + num(s.target2)],
+				['Target 3', '₹' + num(s.target3)],
+				['🛑 Stop Loss', '₹' + num(s.stop_loss)],
+				['Risk:Reward', num(s.risk_reward)],
+				['Holding', num(s.holding)]
+			];
+			sc.forEach(function(c){ var t=el('div','fnosp-tile'); t.innerHTML='<div class="k">'+esc(c[0])+'</div><div class="v">'+esc(c[1])+'</div>'; sg.appendChild(t); });
+			stk.appendChild( sg );
+			wrap.appendChild( stk );
+		} else if ( !data.is_fno && !data.setup ) {
+			wrap.appendChild( el('div','fnosp-rec','<div class="fnosp-rec-title">📈 ' + esc(data.instrument) + ' @ ₹' + esc(data.ltp) + '</div><p>No clear stock trade right now. Wait for a higher-confidence setup.</p>') );
 		}
 
 		// Expert Advice footer

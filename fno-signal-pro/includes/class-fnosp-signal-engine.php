@@ -137,27 +137,34 @@ class FnOSP_Signal_Engine {
 		// STEP 8: probability table.
 		$probabilities = $this->build_probability_table( $direction, $confidence, $setup, $snapshot );
 
-		// ALWAYS generate both CE and PE option plans (strike + Call + Put signals visible).
-		$step  = $this->strike_step( $snapshot['instrument'], $snapshot['ltp'] );
-		$atm   = round( $snapshot['ltp'] / $step ) * $step;
-		$dte   = isset( $opts['dte'] ) ? max( 1, (int) $opts['dte'] ) : 7;
+		// Determine if this is an F&O index or an equity stock.
+		$fno_indices = array( 'NIFTY', 'NIFTY50', 'BANKNIFTY', 'FINNIFTY', 'SENSEX', 'MIDCPNIFTY' );
+		$is_fno      = in_array( strtoupper( $snapshot['instrument'] ), $fno_indices, true );
 
+		// F&O indices: generate CE/PE option plans with strike & premiums.
+		// Stocks: show equity price levels only (no option premiums — they trade on spot).
 		$option_plan = null;
-		if ( ! empty( $opts['strike'] ) && (float) $opts['strike'] > 0 ) {
-			$option_plan = $this->build_option_plan(
-				$snapshot, $direction, (float) $opts['strike'],
-				isset( $opts['opt_type'] ) ? strtoupper( $opts['opt_type'] ) : 'CE',
-				$dte, isset( $opts['premium'] ) ? (float) $opts['premium'] : 0.0
-			);
-		} else {
-			// Default: use the directional one as primary.
-			$otype = ( 'SELL' === $direction ) ? 'PE' : 'CE';
-			$option_plan = $this->build_option_plan( $snapshot, $direction, $atm, $otype, $dte, 0.0 );
-		}
+		$call_plan   = null;
+		$put_plan    = null;
 
-		// Always build both Call and Put at ATM.
-		$call_plan = $this->build_option_plan( $snapshot, 'BUY', $atm, 'CE', $dte, 0.0 );
-		$put_plan  = $this->build_option_plan( $snapshot, 'SELL', $atm, 'PE', $dte, 0.0 );
+		if ( $is_fno ) {
+			$step = $this->strike_step( $snapshot['instrument'], $snapshot['ltp'] );
+			$atm  = round( $snapshot['ltp'] / $step ) * $step;
+			$dte  = isset( $opts['dte'] ) ? max( 1, (int) $opts['dte'] ) : 7;
+
+			if ( ! empty( $opts['strike'] ) && (float) $opts['strike'] > 0 ) {
+				$option_plan = $this->build_option_plan(
+					$snapshot, $direction, (float) $opts['strike'],
+					isset( $opts['opt_type'] ) ? strtoupper( $opts['opt_type'] ) : 'CE',
+					$dte, isset( $opts['premium'] ) ? (float) $opts['premium'] : 0.0
+				);
+			} else {
+				$otype = ( 'SELL' === $direction ) ? 'PE' : 'CE';
+				$option_plan = $this->build_option_plan( $snapshot, $direction, $atm, $otype, $dte, 0.0 );
+			}
+			$call_plan = $this->build_option_plan( $snapshot, 'BUY', $atm, 'CE', $dte, 0.0 );
+			$put_plan  = $this->build_option_plan( $snapshot, 'SELL', $atm, 'PE', $dte, 0.0 );
+		}
 
 
 
@@ -165,6 +172,7 @@ class FnOSP_Signal_Engine {
 
 		$result = array(
 			'instrument'    => $snapshot['instrument'],
+			'is_fno'        => $is_fno,
 			'generated_at'  => gmdate( 'c', $snapshot['timestamp'] ),
 			'source'        => $snapshot['source'],
 			'ltp'           => $snapshot['ltp'],
