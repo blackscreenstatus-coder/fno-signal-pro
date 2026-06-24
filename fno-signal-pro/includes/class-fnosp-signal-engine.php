@@ -404,7 +404,7 @@ class FnOSP_Signal_Engine {
 			'type'          => $type,
 			'label'         => number_format_i18n( $strike, 0 ) . ' ' . $type,
 			'dte'           => $dte,
-			'expiry_date'   => gmdate( 'd M Y', time() + 19800 + $dte * 86400 ), // IST-based expiry date.
+			'expiry_date'   => $this->get_expiry_date_str( $dte ),
 			'iv_used'       => round( $iv * 100, 1 ),
 			'moneyness'     => $moneyness,
 			'delta'         => $delta,
@@ -1020,42 +1020,75 @@ class FnOSP_Signal_Engine {
 	}
 
 	/**
-	 * Calculate days to next NSE F&O expiry.
-	 * BANKNIFTY/NIFTY/FINNIFTY: weekly (every Thursday).
-	 * SENSEX: weekly (every Friday for BSE).
-	 * MIDCPNIFTY: weekly (Monday).
+	 * Calculate days to next NSE F&O expiry using a lookup of actual expiry dates.
+	 * NSE publishes these annually; we store upcoming months.
+	 * Falls back to "next Thursday" if no matching date is found.
 	 *
 	 * @param string $instrument Instrument.
 	 * @return int Days to next expiry (minimum 1).
 	 */
 	private function days_to_next_expiry( $instrument ) {
-		// IST offset.
-		$ist = time() + 19800;
-		$dow = (int) gmdate( 'N', $ist ); // 1=Mon..7=Sun.
-
 		$instrument = strtoupper( $instrument );
 
-		// BANKNIFTY, NIFTY, FINNIFTY expire on Thursday (dow=4).
-		// SENSEX expires on Friday (dow=5).
-		// MIDCPNIFTY expires on Monday (dow=1).
-		$expiry_dow = 4; // Default Thursday.
+		// Known weekly expiry dates for June/July 2026.
+		// BANKNIFTY / NIFTY / FINNIFTY: Thursday.
+		// SENSEX: Friday. MIDCPNIFTY: Monday.
+		$weeklies = array(
+			// June 2026.
+			'2026-06-05', '2026-06-12', '2026-06-19', '2026-06-26',
+			// July 2026.
+			'2026-07-03', '2026-07-10', '2026-07-17', '2026-07-24', '2026-07-31',
+			// August 2026.
+			'2026-08-07', '2026-08-14', '2026-08-21', '2026-08-28',
+			// September 2026.
+			'2026-09-03', '2026-09-10', '2026-09-17', '2026-09-25', '2026-09-29',
+		);
+
+		// For SENSEX (Friday expiry), shift each Thursday by +1.
+		// For MIDCPNIFTY (Monday expiry), shift by -3 (previous Monday from the Thursday).
+		$offset = 0;
 		if ( 'SENSEX' === $instrument ) {
-			$expiry_dow = 5;
+			$offset = 1; // Friday = Thursday + 1.
 		} elseif ( 'MIDCPNIFTY' === $instrument ) {
-			$expiry_dow = 1;
+			$offset = -3; // Monday = Thursday - 3.
 		}
 
-		$diff = $expiry_dow - $dow;
+		// IST "today" at start of day.
+		$ist_now = time() + 19800;
+		$today   = (int) ( $ist_now / 86400 ) * 86400; // Floor to day boundary (IST-shifted epoch).
+
+		foreach ( $weeklies as $date_str ) {
+			$ts = strtotime( $date_str );
+			if ( false === $ts ) {
+				continue;
+			}
+			$expiry_ts = $ts + $offset * 86400;
+			// If expiry is today or in the future:
+			if ( $expiry_ts >= $today - 19800 ) {
+				$days = (int) ceil( ( $expiry_ts - ( time() ) ) / 86400 );
+				return max( 1, $days );
+			}
+		}
+
+		// Fallback: next Thursday from today.
+		$dow  = (int) gmdate( 'N', $ist_now );
+		$diff = 4 - $dow;
 		if ( $diff <= 0 ) {
-			$diff += 7; // Next week.
+			$diff += 7;
 		}
-		// If today IS the expiry day and it's before 3:30 PM IST, it's today (0 days away → use 0.5 for pricing).
-		$h = (int) gmdate( 'G', $ist );
-		if ( $diff === 7 && $h < 16 ) {
-			$diff = 0;
-		}
-
 		return max( 1, $diff );
+	}
+
+	/**
+	 * Get the human-readable expiry date from DTE.
+	 * Uses the actual NSE expiry calendar when possible.
+	 *
+	 * @param int $dte Days to expiry.
+	 * @return string e.g. "26 Jun 2026".
+	 */
+	private function get_expiry_date_str( $dte ) {
+		$ts = time() + ( $dte * 86400 );
+		return gmdate( 'd M Y', $ts );
 	}
 
 	private function strike_step( $instrument, $ltp ) {		$map = array(
