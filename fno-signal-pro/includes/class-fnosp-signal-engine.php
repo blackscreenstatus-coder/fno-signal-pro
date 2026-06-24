@@ -150,7 +150,8 @@ class FnOSP_Signal_Engine {
 		if ( $is_fno ) {
 			$step = $this->strike_step( $snapshot['instrument'], $snapshot['ltp'] );
 			$atm  = round( $snapshot['ltp'] / $step ) * $step;
-			$dte  = isset( $opts['dte'] ) ? max( 1, (int) $opts['dte'] ) : 7;
+			// Use actual NSE expiry (next Thursday for weeklies) instead of hardcoded 7 days.
+			$dte  = isset( $opts['dte'] ) ? max( 1, (int) $opts['dte'] ) : $this->days_to_next_expiry( $snapshot['instrument'] );
 
 			if ( ! empty( $opts['strike'] ) && (float) $opts['strike'] > 0 ) {
 				$option_plan = $this->build_option_plan(
@@ -403,7 +404,7 @@ class FnOSP_Signal_Engine {
 			'type'          => $type,
 			'label'         => number_format_i18n( $strike, 0 ) . ' ' . $type,
 			'dte'           => $dte,
-			'expiry_date'   => gmdate( 'd M Y', time() + $dte * 86400 ),
+			'expiry_date'   => gmdate( 'd M Y', time() + 19800 + $dte * 86400 ), // IST-based expiry date.
 			'iv_used'       => round( $iv * 100, 1 ),
 			'moneyness'     => $moneyness,
 			'delta'         => $delta,
@@ -1018,8 +1019,46 @@ class FnOSP_Signal_Engine {
 		return '₹' . number_format_i18n( $lo, 1 ) . ' - ₹' . number_format_i18n( $hi, 1 );
 	}
 
-	private function strike_step( $instrument, $ltp ) {
-		$map = array(
+	/**
+	 * Calculate days to next NSE F&O expiry.
+	 * BANKNIFTY/NIFTY/FINNIFTY: weekly (every Thursday).
+	 * SENSEX: weekly (every Friday for BSE).
+	 * MIDCPNIFTY: weekly (Monday).
+	 *
+	 * @param string $instrument Instrument.
+	 * @return int Days to next expiry (minimum 1).
+	 */
+	private function days_to_next_expiry( $instrument ) {
+		// IST offset.
+		$ist = time() + 19800;
+		$dow = (int) gmdate( 'N', $ist ); // 1=Mon..7=Sun.
+
+		$instrument = strtoupper( $instrument );
+
+		// BANKNIFTY, NIFTY, FINNIFTY expire on Thursday (dow=4).
+		// SENSEX expires on Friday (dow=5).
+		// MIDCPNIFTY expires on Monday (dow=1).
+		$expiry_dow = 4; // Default Thursday.
+		if ( 'SENSEX' === $instrument ) {
+			$expiry_dow = 5;
+		} elseif ( 'MIDCPNIFTY' === $instrument ) {
+			$expiry_dow = 1;
+		}
+
+		$diff = $expiry_dow - $dow;
+		if ( $diff <= 0 ) {
+			$diff += 7; // Next week.
+		}
+		// If today IS the expiry day and it's before 3:30 PM IST, it's today (0 days away → use 0.5 for pricing).
+		$h = (int) gmdate( 'G', $ist );
+		if ( $diff === 7 && $h < 16 ) {
+			$diff = 0;
+		}
+
+		return max( 1, $diff );
+	}
+
+	private function strike_step( $instrument, $ltp ) {		$map = array(
 			'NIFTY'      => 50,
 			'BANKNIFTY'  => 100,
 			'FINNIFTY'   => 50,
