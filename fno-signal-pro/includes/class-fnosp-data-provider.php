@@ -45,23 +45,17 @@ class FnOSP_Data_Provider {
 			return $this->normalize( $remote, $instrument );
 		}
 
-		if ( 'free' === $provider ) {
-			$free     = new FnOSP_Free_Data( $this->settings );
-			$snapshot = $free->get_snapshot( $instrument );
-			if ( is_wp_error( $snapshot ) ) {
-				// Optional graceful fallback to demo so the UI never hard-fails.
-				if ( (int) $this->settings->get( 'free_fallback_demo', 1 ) === 1 ) {
-					$demo                 = $this->demo_snapshot( $instrument );
-					$demo['source']       = 'demo (free source unavailable)';
-					$demo['data_notes']   = array( $snapshot->get_error_message() );
-					return $demo;
-				}
-				return $snapshot;
-			}
-			return $snapshot;
+		// Free live data (default). No fallback to demo — show error if unavailable.
+		$free     = new FnOSP_Free_Data( $this->settings );
+		$snapshot = $free->get_snapshot( $instrument );
+		if ( is_wp_error( $snapshot ) ) {
+			return new WP_Error( 'fnosp_no_data', sprintf(
+				/* translators: %s: instrument */
+				__( 'Could not fetch live data for %s. Market may be closed, or your host cannot reach the data source. Try again during market hours (9:15 AM – 3:30 PM IST).', 'fno-signal-pro' ),
+				$instrument
+			) );
 		}
-
-		return $this->demo_snapshot( $instrument );
+		return $snapshot;
 	}
 
 	/**

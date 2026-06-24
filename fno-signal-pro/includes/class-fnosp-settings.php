@@ -22,11 +22,10 @@ class FnOSP_Settings {
 	public static function default_settings() {
 		return array(
 			// Market data provider.
-			'data_provider'      => 'free', // free (live prices) | demo | custom_rest.
+			'data_provider'      => 'free', // free (live only) | custom_rest.
 			'data_api_url'       => '',
 			'data_api_key'       => '',
-			'free_fallback_demo' => 1, // If free source fails, fall back to demo data.
-			'nse_proxy'          => '', // Optional proxy prefix to reach NSE (bypass IP blocks).
+			'nse_proxy'          => '',
 
 			// AI analyst (Anthropic Claude).
 			'ai_enabled'         => 0,

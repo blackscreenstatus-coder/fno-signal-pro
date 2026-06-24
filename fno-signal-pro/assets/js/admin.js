@@ -83,84 +83,59 @@
 		// ⚡ F&O STRIKE SIGNALS (only for indices)
 		if ( data.is_fno && data.option_plan ) {
 			var op = data.option_plan;
+			var isConfirmed = ( data.signal === 'BUY' || data.signal === 'SELL' );
 			var rec = el( 'div', 'fnosp-rec' );
 
-			// Only show full targets when signal is BUY or SELL (confirmed entry).
-			// When NO TRADE: show strike + premium as reference only, but HIDE T1/T2/T3/SL.
-			var isConfirmed = ( data.signal === 'BUY' || data.signal === 'SELL' );
+			rec.innerHTML = '<div class="fnosp-rec-title">⚡ ' + esc(op.label) + ' · Expiry ' + esc(op.expiry_date) + '</div>';
 
-			rec.innerHTML = '<div class="fnosp-rec-title">⚡ ' + esc(op.label) + ' — ' + esc(op.moneyness) + ' (delta ' + esc(op.delta) + ')</div>';
+			if ( isConfirmed && data.setup ) {
+				var s = data.setup;
+				var grid = el( 'div', 'fnosp-grid' );
+				var cells = [
+					['📍 Entry Trigger', '₹' + num(s.entry_high) + ' (spot)'],
+					['🎯 Target 1', '₹' + num(s.target1)],
+					['🎯 Target 2', '₹' + num(s.target2)],
+					['🛑 Stop Loss', '₹' + num(s.stop_loss)],
+					['⚖️ Risk:Reward', num(s.risk_reward)],
+					['⏱ Holding', num(s.holding)]
+				];
+				cells.forEach(function(c){ grid.appendChild( makeTile(c[0],c[1]) ); });
+				rec.appendChild( grid );
 
-			var grid = el( 'div', 'fnosp-grid' );
-			var cells = [
-				['Current Premium (est.)', '₹' + num(op.premium_now) + ' *'],
-				['Expiry', esc(op.expiry_date || 'N/A') + ' · IV ' + num(op.iv_used) + '%']
-			];
-
-			if ( isConfirmed ) {
-				// Show targets ONLY when entry is confirmed.
-				if ( op.sell_when && op.sell_when.targets ) {
-					var tg = op.sell_when.targets;
-					cells.push(['T1 (book ⅓)', '₹' + num(tg[0].premium) + ' ← spot ' + num(tg[0].spot)]);
-					cells.push(['T2 (book ⅓)', '₹' + num(tg[1].premium) + ' ← spot ' + num(tg[1].spot)]);
-					cells.push(['T3 (trail)', '₹' + num(tg[2].premium) + ' ← spot ' + num(tg[2].spot)]);
-				}
-				if ( op.sell_when && op.sell_when.stop_loss ) {
-					cells.push(['🛑 Stop Loss', '₹' + num(op.sell_when.stop_loss.premium) + ' ← spot ' + num(op.sell_when.stop_loss.spot)]);
-				}
+				// P&L Calculator for ₹10,000 budget.
+				var lotSize = 15; // BANKNIFTY lot.
+				var spotMove = Math.abs(parseFloat(s.target1) - parseFloat(s.entry_high));
+				var profitPerLot = (spotMove * 0.5 * lotSize).toFixed(0); // ~50% delta.
+				rec.appendChild( el('div','fnosp-rec-cond','💰 With ₹10,000: Buy 1 lot (15 qty) at market premium. Target spot move ₹' + spotMove.toFixed(0) + ' → est. profit ₹' + profitPerLot + '/lot.') );
+				rec.appendChild( el('div','fnosp-rec-cond','📌 Open your broker → Buy ' + esc(op.label) + ' at the live market price when spot crosses ₹' + num(s.entry_high)) );
+			} else {
+				rec.appendChild( el('div','fnosp-rec-cond fnosp-rec-warn','⏸ Waiting for entry. Signal is ' + esc(data.signal) + ' (' + esc(data.confidence) + '%). Targets appear on confirmed BUY/SELL.') );
+				rec.appendChild( el('div','fnosp-rec-cond','📌 Entry condition: ' + esc(op.buy_when.condition)) );
 			}
 
-			cells.forEach(function(c){ var t=el('div','fnosp-tile'); t.innerHTML='<div class="k">'+esc(c[0])+'</div><div class="v">'+esc(c[1])+'</div>'; grid.appendChild(t); });
-			rec.appendChild( grid );
-
-			if ( !isConfirmed ) {
-				rec.appendChild( el('div','fnosp-rec-cond fnosp-rec-warn','⏸ Waiting for entry confirmation. T1/T2/T3/SL will appear when the signal turns BUY or SELL.') );
-			}
-			rec.appendChild( el('div','fnosp-rec-cond','📌 '+esc(op.buy_when.condition)) );
-			if ( isConfirmed && op.sell_when && op.sell_when.time_exit ) rec.appendChild( el('div','fnosp-rec-cond','⏱ '+esc(op.sell_when.time_exit)) );
-			rec.appendChild( el('div','fnosp-rec-cond fnosp-premium-note','* Premium is a model estimate (Black-Scholes). Real market premium may differ — verify on your broker/TradingView before entry.') );
+			rec.appendChild( el('div','fnosp-premium-note','All levels are based on live spot price. Check your broker for the actual option premium before trading.') );
 			wrap.appendChild( rec );
 		}
 
-		// 📊 CALL & PUT (only for F&O indices)
-		if ( data.is_fno && ( data.call_plan || data.put_plan ) ) {
-			var isConfirmedCP = ( data.signal === 'BUY' || data.signal === 'SELL' );
+		// 📊 CALL & PUT (only for F&O indices) — spot-based, no fake premiums.
+		if ( data.is_fno && data.setup ) {
 			var cpWrap = el( 'div', 'fnosp-cp-wrap' );
-			cpWrap.appendChild( el( 'div', 'fnosp-section-title', '📊 F&O Strike Price — Call & Put' ) );
+			cpWrap.appendChild( el( 'div', 'fnosp-section-title', '📊 Quick View — ' + esc(data.instrument) + ' Spot Levels' ) );
 			var cpGrid = el( 'div', 'fnosp-cp-grid' );
 
-			if ( data.call_plan ) {
-				var cp = data.call_plan;
-				var cBox = el( 'div', 'fnosp-cp-box fnosp-cp-call' );
-				var cHtml = '<div class="fnosp-cp-head">🟢 CALL (CE)</div>'
-					+ '<div class="fnosp-cp-strike">' + esc(cp.label) + '</div>'
-					+ '<div class="fnosp-cp-row">Premium (est.): <strong>₹' + num(cp.premium_now) + '</strong></div>';
-				if ( isConfirmedCP && data.signal === 'BUY' ) {
-					cHtml += ( cp.sell_when && cp.sell_when.targets ? '<div class="fnosp-cp-row">T1 ₹' + num(cp.sell_when.targets[0].premium) + ' · T2 ₹' + num(cp.sell_when.targets[1].premium) + ' · T3 ₹' + num(cp.sell_when.targets[2].premium) + '</div>' : '' )
-						+ ( cp.sell_when && cp.sell_when.stop_loss ? '<div class="fnosp-cp-row">SL ₹' + num(cp.sell_when.stop_loss.premium) + '</div>' : '' );
-				} else {
-					cHtml += '<div class="fnosp-cp-row" style="color:#888;font-style:italic">Targets show on BUY signal</div>';
-				}
-				cHtml += '<div class="fnosp-cp-cond">' + esc(cp.buy_when.condition) + '</div>';
-				cBox.innerHTML = cHtml;
-				cpGrid.appendChild( cBox );
-			}
-			if ( data.put_plan ) {
-				var pp = data.put_plan;
-				var pBox = el( 'div', 'fnosp-cp-box fnosp-cp-put' );
-				var pHtml = '<div class="fnosp-cp-head">🔴 PUT (PE)</div>'
-					+ '<div class="fnosp-cp-strike">' + esc(pp.label) + '</div>'
-					+ '<div class="fnosp-cp-row">Premium (est.): <strong>₹' + num(pp.premium_now) + '</strong></div>';
-				if ( isConfirmedCP && data.signal === 'SELL' ) {
-					pHtml += ( pp.sell_when && pp.sell_when.targets ? '<div class="fnosp-cp-row">T1 ₹' + num(pp.sell_when.targets[0].premium) + ' · T2 ₹' + num(pp.sell_when.targets[1].premium) + ' · T3 ₹' + num(pp.sell_when.targets[2].premium) + '</div>' : '' )
-						+ ( pp.sell_when && pp.sell_when.stop_loss ? '<div class="fnosp-cp-row">SL ₹' + num(pp.sell_when.stop_loss.premium) + '</div>' : '' );
-				} else {
-					pHtml += '<div class="fnosp-cp-row" style="color:#888;font-style:italic">Targets show on SELL signal</div>';
-				}
-				pHtml += '<div class="fnosp-cp-cond">' + esc(pp.buy_when.condition) + '</div>';
-				pBox.innerHTML = pHtml;
-				cpGrid.appendChild( pBox );
-			}
+			var s = data.setup;
+			var cBox = el( 'div', 'fnosp-cp-box fnosp-cp-call' );
+			cBox.innerHTML = '<div class="fnosp-cp-head">🟢 BUY CALL when spot &gt; ₹' + esc(s.entry_high) + '</div>'
+				+ '<div class="fnosp-cp-row">Target: ₹' + num(s.target1) + ' / ₹' + num(s.target2) + '</div>'
+				+ '<div class="fnosp-cp-row">SL: ₹' + num(s.stop_loss) + '</div>';
+			cpGrid.appendChild( cBox );
+
+			var pBox = el( 'div', 'fnosp-cp-box fnosp-cp-put' );
+			pBox.innerHTML = '<div class="fnosp-cp-head">🔴 BUY PUT when spot &lt; ₹' + esc(s.entry_low) + '</div>'
+				+ '<div class="fnosp-cp-row">Target: ₹' + num(parseFloat(s.stop_loss) - parseFloat(s.atr || 0)) + '</div>'
+				+ '<div class="fnosp-cp-row">SL: ₹' + num(s.entry_high) + '</div>';
+			cpGrid.appendChild( pBox );
+
 			cpWrap.appendChild( cpGrid );
 			wrap.appendChild( cpWrap );
 		}
